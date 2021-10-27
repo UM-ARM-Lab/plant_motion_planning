@@ -11,5 +11,5 @@ setup(
     description='',
     test_suite='pytest',
     tests_require=[],
-    install_requires=['numpy', 'pybullet']
+    install_requires=['numpy', 'pybullet', 'scipy']
 )

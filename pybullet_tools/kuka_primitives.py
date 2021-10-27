@@ -241,6 +241,11 @@ class Command(object):
 
         text_id = []
 
+        # text_ori = pybullet.getQuaternionFromEuler([1.57, 0.0, 0.0])
+        text_ori = pybullet.getQuaternionFromEuler([0.62, 0.0, 0.5])
+
+        pybullet.addUserDebugText("Deflection limit: %0.3f rad" % (deflection_limit), [-1.95, 1, 1.05], textColorRGB=[1, 0, 0])
+
         for e, b in enumerate(movable):
             b.observe()
             text_id.append(pybullet.addUserDebugText("Deflection of plant " + str(e + 1) + ": " + str(b.deflection),
@@ -271,10 +276,9 @@ class Command(object):
                     if(b.deflection > deflection_limit):
                         deflection_over_limit = deflection_over_limit + (b.deflection - deflection_limit)
 
-                    if e not in text_id:
-                        text_id[e] = -1
-                    text_id[e] = pybullet.addUserDebugText("Deflection of plant " + str(e + 1) + ": " + str(b.deflection),
-                                              [-2 - 0.2 * e, 1, 1 - 0.2 * e], textColorRGB=[0, 0, 0], replaceItemUniqueId=text_id[e])
+                    pybullet.addUserDebugText("Deflection of plant " + str(e + 1) + ": %.3f rad" % (b.deflection),
+                                              [-2 - 0.07 * e, 1, 1 - 0.07 * e], textColorRGB=[0, 0, 0],
+                                              replaceItemUniqueId=text_id[e])
 
                     print(f"Deflection of plant {e+1}: {b.deflection}")
 

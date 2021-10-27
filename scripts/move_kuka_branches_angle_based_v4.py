@@ -51,7 +51,8 @@ goal_conf = (-1.3871757013351371, 1.6063773991870438, 2.152853076950719, -1.0638
 
 def main(display='execute'): # control | execute | step
 
-    connect(use_gui=True,width=1000, height=700)
+    # connect(use_gui=True,width=1000, height=700)
+    connect(use_gui=True,width=1920, height=1080)
     # connect(use_gui=True)
     # p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1)
     disable_real_time()
@@ -178,8 +179,8 @@ def main(display='execute'): # control | execute | step
     update_state()
     # wait_if_gui('{}?'.format(display))
 
-    # log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
-    #                 fileName="../simulation_recordings/angle_constraint_v4_1/env0_rec1.mp4")
+    log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
+                    fileName="../testing_data/angle_constraint_v4_1/video_recordings/env1_rec1.mp4")
     if display == 'control':
         enable_gravity()
         command.control(real_time=False, dt=0)
@@ -201,8 +202,8 @@ def main(display='execute'): # control | execute | step
         raise ValueError(display)
 
     print('Quit?')
-    # wait_if_gui()
-    # p.stopStateLogging(log_id)
+    wait_if_gui()
+    p.stopStateLogging(log_id)
     disconnect()
 
 if __name__ == '__main__':

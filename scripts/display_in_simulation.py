@@ -45,6 +45,10 @@ plant1 = representation.TwoAngleRepresentation(plant_id, 1)
 # running_sum_disp_x = 0.0
 # running_sum_disp_y = 0.0
 
+text_ori = p.getQuaternionFromEuler([1.57, 0.0, 0.0])
+
+p.addUserDebugText("hello world", [1, 1, 1], textColorRGB=[0, 0, 0], textOrientation=text_ori)
+
 t = 0
 while True:
     plant1.observe()
@@ -75,9 +79,9 @@ while True:
 
     text_id = []
 
-    # Display text in simulation
-    text_id.append(p.addUserDebugText("value: " + str(t), [1, 1, 1], textColorRGB=[0, 0, 0]))
-    text_id.append(p.addUserDebugText("value: " + str(t), [1, 1, 0.8], textColorRGB=[0, 0, 0]))
+    # # Display text in simulation
+    # text_id.append(p.addUserDebugText("value: " + str(t), [1, 1, 1], textColorRGB=[0, 0, 0]))
+    # text_id.append(p.addUserDebugText("value: " + str(t), [1, 1, 0.8], textColorRGB=[0, 0, 0]))
 
     p.stepSimulation()
     time.sleep(0.01)
