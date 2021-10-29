@@ -51,8 +51,8 @@ goal_conf = (-1.3871757013351371, 1.6063773991870438, 2.152853076950719, -1.0638
 
 def main(display='execute'): # control | execute | step
 
-    # connect(use_gui=True,width=1000, height=700)
-    connect(use_gui=True,width=1920, height=1080)
+    connect(use_gui=True,width=1000, height=700)
+    # connect(use_gui=True,width=1920, height=1080)
     # connect(use_gui=True)
     # p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1)
     disable_real_time()
@@ -84,20 +84,20 @@ def main(display='execute'): # control | execute | step
     # set_random_pose(plant2, floor, px = 0.12, py = -0.15)
 
     # ENV1
-    set_random_pose(plant1, floor, px = 0.4, py = 0.1)
-    set_random_pose(plant2, floor, px = 0.12, py = -0.15)
-    set_random_pose(plant3, floor, px = -0.25, py = 0.60)
-    # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
-    set_random_pose(plant4, floor, px = -0.25, py = 0.45)
-    set_random_pose(plant5, floor, px = -0.05, py = 0.50)
+    # set_random_pose(plant1, floor, px = 0.4, py = 0.1)
+    # set_random_pose(plant2, floor, px = 0.12, py = -0.15)
+    # set_random_pose(plant3, floor, px = -0.25, py = 0.60)
+    # # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
+    # set_random_pose(plant4, floor, px = -0.25, py = 0.45)
+    # set_random_pose(plant5, floor, px = -0.05, py = 0.50)
 
     # ENV2
-    # set_random_pose(plant1, floor, px = 0.15, py = -0.1)
-    # set_random_pose(plant2, floor, px = -0.08, py = -0.15)
-    # set_random_pose(plant3, floor, px = 0.25, py = -0.60)
-    # # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
-    # set_random_pose(plant4, floor, px = 0.25, py = -0.43)
-    # set_random_pose(plant5, floor, px = -0.05, py = -0.48)
+    set_random_pose(plant1, floor, px = 0.15, py = -0.1)
+    set_random_pose(plant2, floor, px = -0.08, py = -0.15)
+    set_random_pose(plant3, floor, px = 0.25, py = -0.60)
+    # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
+    set_random_pose(plant4, floor, px = 0.25, py = -0.43)
+    set_random_pose(plant5, floor, px = -0.05, py = -0.48)
 
     # ENV3
     # set_random_pose(plant1, floor, px = 0.4, py = -0.25)
@@ -180,7 +180,7 @@ def main(display='execute'): # control | execute | step
     # wait_if_gui('{}?'.format(display))
 
     log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
-                    fileName="../testing_data/angle_constraint_v4_1/video_recordings/env1_rec1.mp4")
+                    fileName="../testing_data/angle_constraint_v4_1/video_recordings/env2_trial5.mp4")
     if display == 'control':
         enable_gravity()
         command.control(real_time=False, dt=0)
@@ -202,7 +202,7 @@ def main(display='execute'): # control | execute | step
         raise ValueError(display)
 
     print('Quit?')
-    wait_if_gui()
+    # wait_if_gui()
     p.stopStateLogging(log_id)
     disconnect()
 
