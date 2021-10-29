@@ -107,6 +107,22 @@ def main(display='execute'): # control | execute | step
     set_random_pose(plant4, floor, px = 0.25, py = -0.40)
     set_random_pose(plant5, floor, px = 0.40, py = -0.60)
 
+    # ENV4
+    # set_random_pose(plant1, floor, px = 0.15, py = -0.1)
+    # set_random_pose(plant2, floor, px = -0.08, py = -0.15)
+    # set_random_pose(plant3, floor, px = 0.25, py = -0.60)
+    # # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
+    # set_random_pose(plant4, floor, px = 0.25, py = -0.35)
+    # set_random_pose(plant5, floor, px = -0.05, py = -0.48)
+
+    # ENV5
+    set_random_pose(plant1, floor, px = -0.05, py = -0.5)
+    set_random_pose(plant2, floor, px = 0.15, py = -0.60)
+    set_random_pose(plant3, floor, px = 0.25, py = -0.70)
+    # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
+    set_random_pose(plant4, floor, px = 0.25, py = -0.35)
+    set_random_pose(plant5, floor, px = 0.40, py = -0.70)
+
     # input("")
     # exit()
 
@@ -180,7 +196,7 @@ def main(display='execute'): # control | execute | step
     # wait_if_gui('{}?'.format(display))
 
     log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
-                    fileName="../testing_data/angle_constraint_v4_1/video_recordings/env3/trial5.mp4")
+                    fileName="../testing_data/angle_constraint_v4_1/video_recordings/env5/trial5.mp4")
     if display == 'control':
         enable_gravity()
         command.control(real_time=False, dt=0)
