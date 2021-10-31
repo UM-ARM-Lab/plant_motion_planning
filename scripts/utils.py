@@ -3,6 +3,8 @@ import pybullet
 import pybullet as p
 # from pybullet_tools.utils import set_pose, Pose, Point, stable_z, step_simulation
 import pybullet_tools.utils as pyb_tools_utils
+from plant_motion_planning import representation
+
 
 def set_random_pose(plant_id, floor, px = None, py = None):
 
@@ -44,3 +46,71 @@ def step_sim():
     for t in range(200):
         pyb_tools_utils.step_simulation()
         # pyb_tools_utils.wait_for_duration(0.02)
+
+
+def generate_plants(num_plants, positions, floor):
+
+    if(len(positions) != num_plants):
+        print("Error! Make sure number of plants equals number of positions!")
+        exit()
+
+    plants_ids = []
+    plant_representations = []
+
+    for i in range(num_plants):
+        plants_ids.append(pyb_tools_utils.load_model('urdf/short_plant_multi_dof2.urdf', fixed_base=True))
+        set_random_pose(plants_ids[-1], floor, px = positions[i][0], py = positions[i][1])
+
+        plant_representations.append(representation.TwoAngleRepresentation(plants_ids[-1], 1))
+
+
+    make_plant_responsive(plants_ids)
+
+    return plants_ids, plant_representations
+
+
+    # ENV5
+    # set_random_pose(plant1, floor, px = -0.05, py = -0.5)
+    # set_random_pose(plant2, floor, px = 0.15, py = -0.60)
+    # set_random_pose(plant3, floor, px = 0.25, py = -0.70)
+    # # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
+    # set_random_pose(plant4, floor, px = 0.25, py = -0.35)
+    # set_random_pose(plant5, floor, px = 0.40, py = -0.70)
+
+envs = {
+    "env1": [
+        [0.4, 0.1],
+        [0.12, -0.15],
+        [-0.25, 0.60],
+        [-0.25, 0.45],
+        [-0.05, 0.50]
+    ],
+    "env2": [
+        [0.15, -0.1],
+        [-0.08, -0.15],
+        [0.25, -0.60],
+        [0.25, -0.43],
+        [-0.05, -0.48]
+    ],
+    "env3": [
+        [0.4, -0.25],
+        [0.25, -0.25],
+        [0.25, -0.60],
+        [0.25, -0.40],
+        [0.40, -0.60]
+    ],
+    "env4": [
+        [0.15, -0.1],
+        [-0.08, -0.15],
+        [0.25, -0.60],
+        [0.25, -0.35],
+        [-0.05, -0.48]
+    ],
+    "env5": [
+        [-0.05, -0.5],
+        [0.15, -0.60],
+        [0.25, -0.70],
+        [0.25, -0.35],
+        [0.40, -0.70]
+    ]
+}

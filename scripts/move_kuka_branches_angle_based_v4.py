@@ -15,7 +15,7 @@ from pybullet_tools.utils import WorldSaver, enable_gravity, connect, dump_world
 import pybullet as p
 import numpy as np
 from plant_motion_planning import representation
-from .utils import set_random_poses, make_plant_responsive, set_random_pose
+from .utils import set_random_poses, make_plant_responsive, set_random_pose, generate_plants, envs
 
 from datetime import datetime
 
@@ -64,105 +64,20 @@ def main(display='execute'): # control | execute | step
     draw_global_system()
     with HideOutput():
         robot = load_model(DRAKE_IIWA_URDF_EDIT, fixed_base = True) # KUKA_IIWA_URDF | DRAKE_IIWA_URDF
-        # robot = load_model("./models/drake/iiwa_description/urdf/iiwa_polytope_collision.urdf") # KUKA_IIWA_URDF | DRAKE_IIWA_URDF
         floor = load_model('models/short_floor.urdf')
     block = load_model(BLOCK_URDF, fixed_base=True)
-    # set_pose(block, Pose(Point(x=-0.4, y=0.2, z=stable_z(block, floor))))
     set_pose(block, Pose(Point(x=0.4,y=-0.4,z=0.45),Euler(yaw=1.57)))
 
-    ## Creating and placing a plant as an obstacle
-    # plant = create_box(0.05,0.05,1,color=BROWN)
-    # plant = load_model('my_scripts/rigid_stem_rigid_branch.urdf', fixed_base=True)
-    plant1 = load_model('urdf/short_plant_multi_dof2.urdf', fixed_base=True)
-    plant2 = load_model('urdf/short_plant_multi_dof2.urdf', fixed_base=True)
-    plant3 = load_model('urdf/short_plant_multi_dof2.urdf', fixed_base=True)
-    plant4 = load_model('urdf/short_plant_multi_dof2.urdf', fixed_base=True)
-    plant5 = load_model('urdf/short_plant_multi_dof2.urdf', fixed_base=True)
+    # Get plant positions given the kind of placement of plants required
+    plant_positions = envs["env5"]
 
-    # Difficult test case!
-    # set_random_pose(plant1, floor, px = 0.4, py = 0.1)
-    # set_random_pose(plant2, floor, px = 0.12, py = -0.15)
-
-    # ENV1
-    # set_random_pose(plant1, floor, px = 0.4, py = 0.1)
-    # set_random_pose(plant2, floor, px = 0.12, py = -0.15)
-    # set_random_pose(plant3, floor, px = -0.25, py = 0.60)
-    # # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
-    # set_random_pose(plant4, floor, px = -0.25, py = 0.45)
-    # set_random_pose(plant5, floor, px = -0.05, py = 0.50)
-
-    # ENV2
-    # set_random_pose(plant1, floor, px = 0.15, py = -0.1)
-    # set_random_pose(plant2, floor, px = -0.08, py = -0.15)
-    # set_random_pose(plant3, floor, px = 0.25, py = -0.60)
-    # # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
-    # set_random_pose(plant4, floor, px = 0.25, py = -0.43)
-    # set_random_pose(plant5, floor, px = -0.05, py = -0.48)
-
-    # ENV3
-    set_random_pose(plant1, floor, px = 0.4, py = -0.25)
-    set_random_pose(plant2, floor, px = 0.25, py = -0.25)
-    set_random_pose(plant3, floor, px = 0.25, py = -0.60)
-    # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
-    set_random_pose(plant4, floor, px = 0.25, py = -0.40)
-    set_random_pose(plant5, floor, px = 0.40, py = -0.60)
-
-    # ENV4
-    # set_random_pose(plant1, floor, px = 0.15, py = -0.1)
-    # set_random_pose(plant2, floor, px = -0.08, py = -0.15)
-    # set_random_pose(plant3, floor, px = 0.25, py = -0.60)
-    # # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
-    # set_random_pose(plant4, floor, px = 0.25, py = -0.35)
-    # set_random_pose(plant5, floor, px = -0.05, py = -0.48)
-
-    # ENV5
-    set_random_pose(plant1, floor, px = -0.05, py = -0.5)
-    set_random_pose(plant2, floor, px = 0.15, py = -0.60)
-    set_random_pose(plant3, floor, px = 0.25, py = -0.70)
-    # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
-    set_random_pose(plant4, floor, px = 0.25, py = -0.35)
-    set_random_pose(plant5, floor, px = 0.40, py = -0.70)
-
-    # input("")
-    # exit()
-
-    # ENV4
-    # set_random_pose(plant1, floor, px = 0.15, py = -0.1)
-    # set_random_pose(plant2, floor, px = -0.08, py = -0.15)
-    # set_random_pose(plant3, floor, px = 0.25, py = -0.60)
-    # # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
-    # set_random_pose(plant4, floor, px = 0.25, py = -0.45)
-    # set_random_pose(plant5, floor, px = -0.0, py = -0.43)
-
-    # ENV5: NOT POSSIBLE AS MANUAL GOAL CONFIGURATION SET IS VIOLATING CONSTRAINTS
-    # set_random_pose(plant1, floor, px = 0.15, py = -0.1)
-    # set_random_pose(plant2, floor, px = -0.08, py = -0.15)
-    # set_random_pose(plant3, floor, px = 0.25, py = -0.60)
-    # # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
-    # set_random_pose(plant4, floor, px = 0.25, py = -0.45)
-    # set_random_pose(plant5, floor, px = 0.03, py = -0.30)
-
-    # ENV6
-    # set_random_pose(plant1, floor, px = 0.15, py = -0.1)
-    # set_random_pose(plant2, floor, px = -0.08, py = -0.15)
-    # set_random_pose(plant3, floor, px = 0.25, py = -0.60)
-    # # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
-    # set_random_pose(plant4, floor, px = 0.25, py = -0.45)
-    # set_random_pose(plant5, floor, px = 0.4, py = -0.70)
-
-    make_plant_responsive([plant1, plant2, plant3, plant4, plant5])
-    # make_plant_responsive([plant1, plant2])
+    # Generate plants given positions
+    plant_ids, plant_representations = generate_plants(num_plants=5, positions=plant_positions, floor=floor)
 
     dump_world()
 
     conf0 = BodyConf(robot, configuration=init_conf)
     conf0.assign()
-
-    plant1_2angle_rep = representation.TwoAngleRepresentation(plant1, 1)
-    plant2_2angle_rep = representation.TwoAngleRepresentation(plant2, 1)
-    plant3_2angle_rep = representation.TwoAngleRepresentation(plant3, 1)
-    plant4_2angle_rep = representation.TwoAngleRepresentation(plant4, 1)
-    plant5_2angle_rep = representation.TwoAngleRepresentation(plant5, 1)
 
     deflection_limit = 0.50
 
@@ -171,12 +86,8 @@ def main(display='execute'): # control | execute | step
     conf_i = BodyConf(robot, configuration=init_conf)
     conf_g = BodyConf(robot, configuration=goal_conf)
 
-    ## Moving arm from conf_i to conf_g
-    # command = move_arm_conf2conf(robot, [floor, block], [plant2_2angle_rep, plant1_2angle_rep],
-    #                              deflection_limit, conf_i, conf_g)
-
-    command = move_arm_conf2conf(robot, [floor, block], [plant2_2angle_rep, plant1_2angle_rep, plant3_2angle_rep,
-                                                         plant4_2angle_rep, plant5_2angle_rep], deflection_limit,
+    # Moving arm from conf_i to conf_g
+    command = move_arm_conf2conf(robot, [floor, block], plant_representations, deflection_limit,
                                  conf_i, conf_g)
 
     if (command is None) or (display is None):
@@ -184,19 +95,12 @@ def main(display='execute'): # control | execute | step
         print("*********************************************************")
         return
 
-    # input("Path calculated! Press enter to continue...")
-
-    distance_fn = get_distance_fn(robot, conf_g.joints, weights=None)
-    alpha = 0.1
-    cost_utils = [distance_fn, alpha]
-
-    # saved_world.restore()
     p.restoreState(saved_world)
     update_state()
     # wait_if_gui('{}?'.format(display))
 
-    log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
-                    fileName="../testing_data/angle_constraint_v4_1/video_recordings/env5/trial5.mp4")
+    # log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
+    #                 fileName="../testing_data/angle_constraint_v4_1/video_recordings/env5/trial5.mp4")
     if display == 'control':
         enable_gravity()
         command.control(real_time=False, dt=0)
@@ -207,19 +111,14 @@ def main(display='execute'): # control | execute | step
     elif display == 'step':
         command.step()
     elif display == 'angle_step':
-        command.execute_with_movable_plant_angle_constraint(robot, block, [plant2, plant1, plant3, plant4, plant5],
-                                                            [plant2_2angle_rep, plant1_2angle_rep,
-                                                             plant3_2angle_rep, plant4_2angle_rep, plant5_2angle_rep],
-                                                            deflection_limit, cost_utils)
-        # command.execute_with_movable_plant_angle_constraint(robot, block, [plant2, plant1],
-        #                                                     [plant2_2angle_rep, plant1_2angle_rep],
-        #                                                     deflection_limit, cost_utils)
+        command.execute_with_movable_plant_angle_constraint(robot, block, plant_ids, plant_representations,
+                                                            deflection_limit)
     else:
         raise ValueError(display)
 
     print('Quit?')
     # wait_if_gui()
-    p.stopStateLogging(log_id)
+    # p.stopStateLogging(log_id)
     disconnect()
 
 if __name__ == '__main__':
