@@ -21,15 +21,7 @@ from .utils import set_random_poses, make_plant_responsive, set_random_pose, gen
 def move_arm_conf2conf(robot, fixed, conf_i, conf_g):
 
     free_motion_fn = get_free_motion_gen(robot, fixed=fixed, teleport=False)
-
-    for attempt in range(100):
-        path_output = free_motion_fn(conf_i, conf_g)
-
-        if(path_output is not None and path_output[0] is not None):
-            path, = path_output
-            break
-        else:
-            continue
+    path, = free_motion_fn(conf_i, conf_g)
 
     return Command(path.body_paths)
 
@@ -58,7 +50,7 @@ def main(display='execute'): # control | execute | step
     block = load_model(BLOCK_URDF, fixed_base=True)
     set_pose(block, Pose(Point(x=0.4,y=-0.4,z=0.45),Euler(yaw=1.57)))
 
-    plant_positions = envs["env4"]
+    plant_positions = envs["env1"]
     plant_ids, plant_representations = generate_plants(num_plants=5, positions=plant_positions, floor=floor)
 
     dump_world()
@@ -74,7 +66,7 @@ def main(display='execute'): # control | execute | step
     conf_g = BodyConf(robot, configuration=goal_conf)
 
     # Moving arm from conf_i to conf_g
-    command = move_arm_conf2conf(robot, [floor, block] + plant_ids, conf_i, conf_g)
+    command = move_arm_conf2conf(robot, [floor, block], conf_i, conf_g)
 
     if (command is None) or (display is None):
         print('Unable to find a plan!')
@@ -86,7 +78,7 @@ def main(display='execute'): # control | execute | step
     # wait_if_gui('{}?'.format(display))
 
     # log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
-    #                              fileName="../testing_data/avoid_all/video_recordings/env5/trial5.mp4")
+    #                              fileName="../testing_data/ignore_deflections/video_recordings/env5/trial5.mp4")
 
     if display == 'control':
         enable_gravity()
@@ -105,6 +97,7 @@ def main(display='execute'): # control | execute | step
     # wait_if_gui()
     # p.stopStateLogging(log_id)
     disconnect()
+
 
 if __name__ == '__main__':
     # main()

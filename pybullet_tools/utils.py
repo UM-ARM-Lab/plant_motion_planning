@@ -4126,11 +4126,13 @@ def check_initial_end_v4(robot, start_conf, end_conf, collision_fn, verbose=True
 def check_initial_end(start_conf, end_conf, collision_fn, verbose=True):
     # TODO: collision_fn might not accept kwargs
     if collision_fn(start_conf, verbose=verbose):
-        print('Warning: initial configuration is in collision')
-        return False
+        print('Error: initial configuration is in collision')
+        exit()
+        # return False
     if collision_fn(end_conf, verbose=verbose):
-        print('Warning: end configuration is in collision')
-        return False
+        print('Error: end configuration is in collision')
+        exit()
+        # return False
     return True
 
 
