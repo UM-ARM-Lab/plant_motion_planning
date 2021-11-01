@@ -29,7 +29,7 @@ from .transformations import quaternion_from_matrix, unit_vector, euler_from_qua
 
 directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(directory, '../motion'))
-from motion_planners.motion_planners.rrt_connect import birrt, rrt_connect_with_controls
+from motion_planners.motion_planners.rrt_connect import birrt, rrt_connect_with_controls, birrt_with_controls
 from motion_planners.motion_planners.rrt_with_angle_constraints import rrt_with_angle_constraints
 from motion_planners.motion_planners.rrt import rrt
 from motion_planners.motion_planners.rrt_connect_with_angle_constraints_v2 import rrt_connect_v2, birrt_v2, birrt_v3, \
@@ -3888,7 +3888,9 @@ def get_collision_fn_with_controls(body, joints, obstacles=[], attachments=[], s
 
         # set_joint_positions(body, joints, q)
         pybullet.setJointMotorControlArray(body, joints, p.POSITION_CONTROL, q, positionGains=7 * [0.01])
-        s_utils.step_sim()
+
+        for t in range(10):
+            s_utils.step_sim()
 
         for attachment in attachments:
             attachment.assign()
@@ -4388,8 +4390,9 @@ def plan_joint_motion_with_controls(body, joints, end_conf, obstacles=[], attach
         return None
 
     if algorithm is None:
-        return rrt_connect_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
-                                         **kwargs)
+        # return rrt_connect_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
+        #                                  **kwargs)
+        return birrt_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
         # return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
     return solve(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, algorithm=algorithm, **kwargs)
     #return plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)

@@ -1,5 +1,6 @@
 import time
 
+from .meta import random_restarts_with_controls
 from .primitives import extend_towards, extend_towards_with_controls
 from .rrt import TreeNode, configs
 from .utils import irange, RRT_ITERATIONS, INF, elapsed_time
@@ -48,10 +49,15 @@ def rrt_connect_with_controls(robot, start, goal, distance_fn, sample_fn, extend
             tree1, tree2 = nodes2, nodes1
 
         target = sample_fn()
+        # print("target config: ", target)
         last1, _ = extend_towards_with_controls(tree1, target, distance_fn, extend_fn, collision_fn, robot,
                                   swap, **kwargs)
+        # print("last position in tree1: ", last1.config)
+        # input("extend from tree1 completed...")
         last2, success = extend_towards_with_controls(tree2, last1.config, distance_fn, extend_fn, collision_fn,
                                         robot, not swap, **kwargs)
+        # print("last position in tree2: ", last2.config)
+        # input("extend from tree2 completed...")
 
         if success:
             path1, path2 = last1.retrace(), last2.retrace()
@@ -125,6 +131,25 @@ def birrt(start, goal, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs
     # TODO: deprecate
     from .meta import random_restarts
     solutions = random_restarts(rrt_connect, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
+                                max_solutions=1, **kwargs)
+    if not solutions:
+        return None
+    return solutions[0]
+
+def birrt_with_controls(robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs):
+    """
+    :param start: Start configuration - conf
+    :param goal: End configuration - conf
+    :param distance_fn: Distance function - distance_fn(q1, q2)->float
+    :param sample_fn: Sample function - sample_fn()->conf
+    :param extend_fn: Extension function - extend_fn(q1, q2)->[q', ..., q"]
+    :param collision_fn: Collision function - collision_fn(q)->bool
+    :param kwargs: Keyword arguments
+    :return: Path [q', ..., q"] or None if unable to find a solution
+    """
+    # TODO: deprecate
+    from .meta import random_restarts
+    solutions = random_restarts_with_controls(rrt_connect_with_controls, robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
                                 max_solutions=1, **kwargs)
     if not solutions:
         return None

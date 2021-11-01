@@ -60,11 +60,11 @@ def extend_towards_with_controls(tree, target, distance_fn, extend_fn, collision
 
     safe = []
     # node_state = []
-    for node in extend[1:]:
+    for node in extend:
 
         # pyb_tools_utils.step_simulation()
-        for t in range(15):
-            s_utils.step_sim()
+        # for t in range(15):
+        #     s_utils.step_sim()
 
         # print("+++++++++++++++++++++++++++++++++++++++++++++++++")
         # print("is_collision?", collision_fn(node))

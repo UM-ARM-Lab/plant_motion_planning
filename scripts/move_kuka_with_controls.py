@@ -34,7 +34,9 @@ def move_arm_conf2conf(robot, fixed, conf_i, conf_g):
             path = path_data[0]
             break
 
-    exit()
+    # exit()
+
+    input("executing path...")
 
     joints = get_movable_joints(robot)
     position_gains = 7 * [0.01]
