@@ -29,7 +29,7 @@ from .transformations import quaternion_from_matrix, unit_vector, euler_from_qua
 
 directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(directory, '../motion'))
-from motion_planners.motion_planners.rrt_connect import birrt
+from motion_planners.motion_planners.rrt_connect import birrt, rrt_connect_with_controls
 from motion_planners.motion_planners.rrt_with_angle_constraints import rrt_with_angle_constraints
 from motion_planners.motion_planners.rrt import rrt
 from motion_planners.motion_planners.rrt_connect_with_angle_constraints_v2 import rrt_connect_v2, birrt_v2, birrt_v3, \
@@ -3868,9 +3868,8 @@ def get_collision_fn_with_angle_constraints(body, joints, obstacles=[], movable 
     return collision_fn
 
 
-def get_collision_fn_with_control(body, joints, obstacles=[], attachments=[], self_collisions=True,
-                                  disabled_collisions=set(), custom_limits={}, use_aabb=False, cache=False,
-                                  max_distance=MAX_DISTANCE, **kwargs):
+def get_collision_fn_with_controls(body, joints, obstacles=[], attachments=[], self_collisions=True, disabled_collisions=set(),
+                     custom_limits={}, use_aabb=False, cache=False, max_distance=MAX_DISTANCE, **kwargs):
     # TODO: convert most of these to keyword arguments
     check_link_pairs = get_self_link_pairs(body, joints, disabled_collisions) if self_collisions else []
     moving_links = frozenset(link for link in get_moving_links(body, joints)
@@ -3883,19 +3882,13 @@ def get_collision_fn_with_control(body, joints, obstacles=[], attachments=[], se
     limits_fn = get_limits_fn(body, joints, custom_limits=custom_limits)
     # TODO: sort bodies by bounding box size
 
-    position_gain = 0.01
-    position_gains = 7 * [position_gain]
-
     def collision_fn(q, verbose=False):
         if limits_fn(q):
             return True
 
         # set_joint_positions(body, joints, q)
-        # control_joints(body, joints, q, position_gain=position_gain)
-        p.setJointMotorControlArray(body, joints, p.POSITION_CONTROL, q, positionGains=position_gains)
-        for t in range(40):
-            # s_utils.step_sim()
-            pybullet.stepSimulation()
+        pybullet.setJointMotorControlArray(body, joints, p.POSITION_CONTROL, q, positionGains=7 * [0.01])
+        s_utils.step_sim()
 
         for attachment in attachments:
             attachment.assign()
@@ -3910,19 +3903,6 @@ def get_collision_fn_with_control(body, joints, obstacles=[], attachments=[], se
                 #print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
                 if verbose: print(body, link1, body, link2)
                 return True
-
-        # #step_simulation()
-        # #update_scene()
-        # for body1 in moving_bodies:
-        #     overlapping_pairs = [(body2, link2) for body2, link2 in get_bodies_in_region(get_moving_aabb(body1))
-        #                          if body2 in obstacles]
-        #     overlapping_bodies = {body2 for body2, _ in overlapping_pairs}
-        #     for body2 in overlapping_bodies:
-        #         if pairwise_collision(body1, body2, **kwargs):
-        #             #print(get_body_name(body1), get_body_name(body2))
-        #             if verbose: print(body1, body2)
-        #             return True
-        # return False
 
         for body1, body2 in product(moving_bodies, obstacles):
             if (not use_aabb or aabb_overlap(get_moving_aabb(body1), get_obstacle_aabb(body2))) \
@@ -4091,6 +4071,40 @@ def plan_waypoints_joint_motion(body, joints, waypoints, start_conf=None, obstac
 
 def plan_direct_joint_motion(body, joints, end_conf, **kwargs):
     return plan_waypoints_joint_motion(body, joints, [end_conf], **kwargs)
+
+
+
+def check_initial_end_with_controls(robot, start_conf, end_conf, collision_fn, verbose=True):
+    # TODO: collision_fn might not accept kwargs
+
+    joints = get_movable_joints(robot)
+
+    set_joint_positions(robot, joints, start_conf)
+    if collision_fn(start_conf, verbose=verbose):
+        print('Error! Initial configuration is in collision')
+        exit()
+
+    # for t in range(100):
+    #     pybullet.stepSimulation()
+    #
+    # input("initial config checked")
+
+    set_joint_positions(robot, joints, end_conf)
+    p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, end_conf, positionGains=7*[0.01])
+
+    t = 0
+    while(t <= 100):
+        t = t + 1
+        s_utils.step_sim()
+        # time.sleep(0.01)
+
+    # input("joints set to goal config. Press enter to check goal config...")
+
+    if collision_fn(end_conf, verbose=verbose):
+        print('Error! End configuration is in collision')
+        exit()
+
+    return True
 
 
 def check_initial_end_v4(robot, start_conf, end_conf, collision_fn, verbose=True):
@@ -4350,6 +4364,36 @@ def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
         return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
     return solve(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, algorithm=algorithm, **kwargs)
     #return plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)
+
+
+
+def plan_joint_motion_with_controls(body, joints, end_conf, obstacles=[], attachments=[],
+                      self_collisions=True, disabled_collisions=set(),
+                      weights=None, resolutions=None, max_distance=MAX_DISTANCE,
+                      use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
+
+    assert len(joints) == len(end_conf)
+    if (weights is None) and (resolutions is not None):
+        weights = np.reciprocal(resolutions)
+    sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
+    distance_fn = get_distance_fn(body, joints, weights=weights)
+    extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
+    collision_fn = get_collision_fn_with_controls(body, joints, obstacles, attachments, self_collisions,
+                                                  disabled_collisions,
+                                    custom_limits=custom_limits, max_distance=max_distance,
+                                    use_aabb=use_aabb, cache=cache)
+
+    start_conf = get_joint_positions(body, joints)
+    if not check_initial_end_with_controls(body, start_conf, end_conf, collision_fn):
+        return None
+
+    if algorithm is None:
+        return rrt_connect_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
+                                         **kwargs)
+        # return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
+    return solve(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, algorithm=algorithm, **kwargs)
+    #return plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)
+
 
 plan_holonomic_motion = plan_joint_motion
 

@@ -16,7 +16,7 @@ from .utils import get_pose, set_pose, get_movable_joints, \
     get_contact_points, CLIENT, pairwise_contact, plan_joint_motion_with_angle_contraints, \
     plan_joint_motion2, add_text, plan_joint_motion_with_angle_contraints_v2, \
     plan_joint_motion_with_angle_contraints_v3, plan_joint_motion_with_angle_contraints_v4, \
-    plan_joint_motion_with_angle_constraints_v5
+    plan_joint_motion_with_angle_constraints_v5, plan_joint_motion_with_controls
 from plant_motion_planning.utils import compute_total_cost, compute_path_cost
 
 # TODO: deprecate
@@ -101,6 +101,16 @@ class BodyConf(object):
     def assign(self):
         set_joint_positions(self.body, self.joints, self.configuration)
         return self.configuration
+
+    def assign_with_controls(self):
+        set_joint_positions(self.body, self.joints, self.configuration)
+        pybullet.setJointMotorControlArray(self.body, self.joints, pybullet.POSITION_CONTROL, self.configuration,
+                                           positionGains=7 * [0.01])
+        for t in range(10):
+            s_utils.step_sim()
+
+        return self.configuration
+
     def __repr__(self):
         index = self.index
         #index = id(self) % 1000
@@ -612,6 +622,23 @@ def get_free_motion_gen(robot, fixed=[], teleport=False, self_collisions=True):
         return (command,)
     return fn
 
+
+def get_free_motion_gen_with_controls(robot, fixed=[], teleport=False, self_collisions=True):
+    def fn(conf1, conf2, fluents=[]):
+        assert ((conf1.body == conf2.body) and (conf1.joints == conf2.joints))
+        if teleport:
+            path = [conf1.configuration, conf2.configuration]
+        else:
+            conf1.assign_with_controls()
+            obstacles = fixed + assign_fluent_state(fluents)
+            path = plan_joint_motion_with_controls(robot, conf2.joints, conf2.configuration, obstacles=obstacles,
+                                                   self_collisions=self_collisions)
+            if path is None:
+                if DEBUG_FAILURE: wait_if_gui('Free motion failed')
+                return None
+        command = Command([BodyPath(robot, path, joints=conf2.joints)])
+        return (command,)
+    return fn
 
 def get_free_motion_gen_with_angle_constraints(robot, fixed=[], movable = [], deflection_limit = 0, teleport=False, self_collisions=True):
     def fn(conf1, conf2, fluents=[]):

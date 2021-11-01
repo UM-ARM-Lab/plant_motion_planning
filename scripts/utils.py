@@ -5,8 +5,6 @@ import pybullet as p
 import pybullet_tools.utils as pyb_tools_utils
 from plant_motion_planning import representation
 
-plant_ids = []
-
 def set_random_pose(plant_id, floor, px = None, py = None):
 
     if px is None and py is None:
@@ -32,9 +30,13 @@ def make_plant_responsive(plant_ids = []):
 
 def step_sim():
 
-    # plant_id = [3, 4, 5, 6, 7]
+    plant_ids = [3, 4, 5, 6, 7]
 
-    global plant_ids
+    # global plant_ids
+
+    if(len(plant_ids) == 0):
+        print("length of plant_ids must be at least 1")
+        exit()
 
     for pid in plant_ids:
         plant_rot_joint_displacement_y, _, plant_hinge_y_reac, _ = pybullet.getJointState(pid, 0)
@@ -51,7 +53,7 @@ def step_sim():
 
 def generate_plants(num_plants, positions, floor):
 
-    global plant_ids
+    # global plant_ids
 
     if(len(positions) != num_plants):
         print("Error! Make sure number of plants equals number of positions!")
@@ -81,6 +83,13 @@ def generate_plants(num_plants, positions, floor):
     # set_random_pose(plant5, floor, px = 0.40, py = -0.70)
 
 envs = {
+    "env0": [
+        [0.4, 0.1],
+        [0.12, -0.15],
+        [-0.25, 0.60],
+        [-0.25, 0.45],
+        [-0.05, 0.50]
+    ],
     "env1": [
         [0.4, 0.1],
         [0.12, -0.15],
