@@ -1,7 +1,10 @@
 import time
 
+import pybullet
 import pybullet as p
 
+# from pybullet_tools.utils import set_joint_positions, get_movable_joints
+import pybullet_tools.utils as pyb_utils
 from .meta import random_restarts_v4
 from .primitives import extend_towards, extend_towards_with_angle_constraint_v2, \
     extend_towards_with_angle_constraint_v3
@@ -121,13 +124,20 @@ def rrt(robot, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, c
 
 
 # temp
-def check_forward_path2(path2, collision_fn, nodes1, nodes2):
+def check_forward_path2(robot, path2, collision_fn, nodes1, nodes2):
 
     last_tree1 = nodes1[-1]
     # tree2.append(0)
     nodes2.clear()
 
     last_tree1.restore_state()
+
+    pyb_utils.set_joint_positions(robot, pyb_utils.get_movable_joints(robot), last_tree1.config)
+    pybullet.setJointMotorControlArray(robot, pyb_utils.get_movable_joints(robot), pybullet.POSITION_CONTROL,
+                                       last_tree1.config, positionGains=7 * [0.01])
+
+    for t in range(10):
+        s_utils.step_sim()
 
     for e, node in enumerate(path2[1:]):
         if(collision_fn(node.config)):
@@ -338,6 +348,7 @@ def rrt_connect_v4(robot, start, start_state_id, goal, distance_fn, sample_fn, e
 
     joints = pyb_tools_utils.get_movable_joints(robot)
     pyb_tools_utils.set_joint_positions(robot, joints, start)
+    pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, start, positionGains=7 * [0.01])
 
     # Wait for some time to let things settle down
     print("RRT: Waiting for the environment to settle...")
@@ -345,7 +356,7 @@ def rrt_connect_v4(robot, start, start_state_id, goal, distance_fn, sample_fn, e
     while(t <= 100):
         t = t + 1
         s_utils.step_sim()
-        time.sleep(0.01)
+        # time.sleep(0.01)
 
     start_time = time.time()
     # if collision_fn(start) or collision_fn(goal):
@@ -356,6 +367,7 @@ def rrt_connect_v4(robot, start, start_state_id, goal, distance_fn, sample_fn, e
     # start_state_id = p.saveState()
 
     pyb_tools_utils.set_joint_positions(robot, joints, goal)
+    pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, goal, positionGains=7 * [0.01])
 
     t = 0
     while(t <= 100):
@@ -420,7 +432,7 @@ def rrt_connect_v4(robot, start, start_state_id, goal, distance_fn, sample_fn, e
 
             # input("press enter to check forward path...")
             # Checking forward path
-            if(check_forward_path2(path2, collision_fn, nodes1, nodes2)):
+            if(check_forward_path2(robot, path2, collision_fn, nodes1, nodes2)):
                 path = configs(path1[:-1] + path2)
                 # TODO: return the trees
                 node_path = path1[:-1] + path2

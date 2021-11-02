@@ -18,6 +18,42 @@ from plant_motion_planning import representation
 from .utils import set_random_poses, make_plant_responsive, set_random_pose, generate_plants, envs, step_sim
 
 
+def move_arm_conf2conf_og(robot, fixed, conf_i, conf_g):
+
+    free_motion_fn = get_free_motion_gen(robot, fixed=fixed, teleport=False)
+    # free_motion_fn = get_free_motion_gen_with_controls(robot, fixed=fixed, teleport=False)
+
+    for num_attempts in range(200):
+
+        path_data = free_motion_fn(conf_i, conf_g)
+
+        # print("path calculated: ", path_data)
+        # input("check2")
+
+        if(path_data is not None and path_data[0] is not None):
+            path = path_data[0]
+            break
+
+    # exit()
+
+    input("executing path...")
+
+    joints = get_movable_joints(robot)
+    position_gains = 7 * [0.01]
+
+    for body_path in path.body_paths:
+        for q in body_path.path:
+
+            p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, q, positionGains=position_gains)
+
+            # for t in range(100):
+            step_sim()
+
+    wait_if_gui("Press enter to continue...")
+    exit()
+
+    return Command(path.body_paths)
+
 def move_arm_conf2conf(robot, fixed, conf_i, conf_g):
 
     # free_motion_fn = get_free_motion_gen(robot, fixed=fixed, teleport=False)
@@ -27,8 +63,8 @@ def move_arm_conf2conf(robot, fixed, conf_i, conf_g):
 
         path_data = free_motion_fn(conf_i, conf_g)
 
-        print("path calculated: ", path_data)
-        input("check2")
+        # print("path calculated: ", path_data)
+        # input("check2")
 
         if(path_data is not None and path_data[0] is not None):
             path = path_data[0]
@@ -79,7 +115,7 @@ def main(display='execute'): # control | execute | step
     block = load_model(BLOCK_URDF, fixed_base=True)
     set_pose(block, Pose(Point(x=0.4,y=-0.4,z=0.45),Euler(yaw=1.57)))
 
-    plant_positions = envs["env0"]
+    plant_positions = envs["env4"]
     plant_ids, plant_representations = generate_plants(num_plants=5, positions=plant_positions, floor=floor)
 
     dump_world()
@@ -95,7 +131,8 @@ def main(display='execute'): # control | execute | step
     conf_g = BodyConf(robot, configuration=goal_conf)
 
     # Moving arm from conf_i to conf_g
-    command = move_arm_conf2conf(robot, [floor, block], conf_i, conf_g)
+    # command = move_arm_conf2conf(robot, [floor, block] + plant_ids, conf_i, conf_g)
+    command = move_arm_conf2conf_og(robot, [floor, block] + plant_ids, conf_i, conf_g)
 
     if (command is None) or (display is None):
         print('Unable to find a plan!')

@@ -102,8 +102,11 @@ def rrt_connect(start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
         target = sample_fn()
         last1, _ = extend_towards(tree1, target, distance_fn, extend_fn, collision_fn,
                                   swap, **kwargs)
+        # input("moved from tree1...")
+
         last2, success = extend_towards(tree2, last1.config, distance_fn, extend_fn, collision_fn,
                                         not swap, **kwargs)
+        # input("moved from tree2...")
 
         if success:
             path1, path2 = last1.retrace(), last2.retrace()

@@ -107,7 +107,12 @@ def extend_towards_with_angle_constraint_v2(tree, target, distance_fn, extend_fn
     extend = list(asymmetric_extend(last.config, target, extend_fn, backward=swap))
     # safe = list(takewhile(negate(collision_fn), extend))
 
-    s_utils.step_sim()
+    pyb_tools_utils.set_joint_positions(robot, pyb_tools_utils.get_movable_joints(robot), extend[0])
+    pybullet.setJointMotorControlArray(robot, pyb_tools_utils.get_movable_joints(robot), pybullet.POSITION_CONTROL,
+                                       extend[0],
+                                       positionGains=7 * [0.01])
+    for t in range(10):
+        s_utils.step_sim()
 
     safe = []
     node_state = []

@@ -1,5 +1,6 @@
 import time
 
+import numpy as np
 import pybullet
 
 import pybullet_tools.utils
@@ -49,6 +50,46 @@ def check_direct(start, goal, extend_fn, collision_fn):
 #################################################################
 
 
+def random_restarts_with_controls(solve_fn, robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
+                                  restarts=RRT_RESTARTS, smooth=RRT_SMOOTHING,
+                                  success_cost=0., max_time=INF, max_solutions=1, **kwargs):
+    """
+    :param start: Start configuration - conf
+    :param goal: End configuration - conf
+    :param distance_fn: Distance function - distance_fn(q1, q2)->float
+    :param sample_fn: Sample function - sample_fn()->conf
+    :param extend_fn: Extension function - extend_fn(q1, q2)->[q', ..., q"]
+    :param collision_fn: Collision function - collision_fn(q)->bool
+    :param max_time: Maximum runtime - float
+    :param kwargs: Keyword arguments
+    :return: Paths [[q', ..., q"], [[q'', ..., q""]]
+    """
+    start_time = time.time()
+    solutions = []
+    path = check_direct_with_controls(robot, start, goal, extend_fn, collision_fn)
+    if path is False:
+        return None
+    if path is not None:
+        solutions.append(path)
+
+    for attempt in irange(restarts + 1):
+        if (len(solutions) >= max_solutions) or (elapsed_time(start_time) >= max_time):
+            break
+        attempt_time = (max_time - elapsed_time(start_time))
+        path = solve_fn(robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
+                        max_time=attempt_time, **kwargs)
+        if path is None:
+            continue
+        path = smooth_path_with_controls(path, robot, extend_fn, collision_fn, max_iterations=smooth,
+                                         max_time=max_time-elapsed_time(start_time))
+        solutions.append(path)
+        if compute_path_cost(path, distance_fn) < success_cost:
+            break
+    solutions = sorted(solutions, key=lambda path: compute_path_cost(path, distance_fn))
+    print('Solutions ({}): {} | Time: {:.3f}'.format(len(solutions), [(len(path), round(compute_path_cost(
+        path, distance_fn), 3)) for path in solutions], elapsed_time(start_time)))
+    return solutions
+
 def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
                        movable, restarts=RRT_RESTARTS, smooth=RRT_SMOOTHING,
                        success_cost=0., max_time=INF, max_solutions=1, **kwargs):
@@ -63,6 +104,7 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
     :param kwargs: Keyword arguments
     :return: Paths [[q', ..., q"], [[q'', ..., q""]]
     """
+
     start_time = time.time()
     solutions = []
     # path = check_direct(start, goal, extend_fn, collision_fn)
@@ -91,20 +133,58 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
         # input("Path found, press enter to start smoothing...")
 
         for smooth_attempt in range(smooth_attempts):
-            path_smoothed = smooth_path_v4(path, node_path, extend_fn, collision_fn, max_iterations=smooth,
+            path_smoothed = smooth_path_v4(robot, path, node_path, extend_fn, collision_fn, max_iterations=smooth,
                               max_time=max_time-elapsed_time(start_time))
 
             # Checking forward path
             flag = 0
             # input("check forward path...")
             print("check forward path...")
+            print("=====================================")
             pybullet_tools.utils.restore_state(start_state_id)
+
+            joints = pybullet_tools.utils.get_movable_joints(robot)
+            pybullet_tools.utils.set_joint_positions(robot, joints, start)
+            pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, start,
+                                               positionGains=7 * [0.01])
+            for t in range(20):
+                s_utils.step_sim()
+
+            input("press enter to check the forward path!")
+
+            # for q in path_smoothed:
+            #
+            #     pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, q, positionGains=7 * [0.01])
+            #
+            #     for t in range(10):
+            #         s_utils.step_sim()
+            #
+            #     for e, b in enumerate(movable):
+            #         b.observe()
+            #
+            #         print("Deflection of plant %d: %f" % (e, b.deflection))
+            #
+            #         if (b.deflection > 0.5):
+            #             print("Error! Deflection limit exceeded!")
+            #             input("")
+
             for q in path_smoothed:
+
                 if(collision_fn(q)):
                     # input("collision detected in forward path... Press enter to abandon current path...")
                     print("collision detected in forward path... Press enter to abandon current path...")
+                    for e, b in enumerate(movable):
+                        b.observe()
+                        print("Deflection of plant %d: %f" % (e, b.deflection))
+
                     flag = 1
                     break
+
+                for e, b in enumerate(movable):
+                    b.observe()
+                    print("Deflection of plant %d: %f" % (e, b.deflection))
+
+            print("=====================================")
 
             if(flag == 0):
                 # input("forward path checking completed. No issues found")
@@ -199,45 +279,7 @@ def check_direct_with_controls(robot, start, goal, extend_fn, collision_fn):
     return direct_path_with_controls(robot, start, goal, extend_fn, collision_fn)
 
 
-def random_restarts_with_controls(solve_fn, robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
-                    restarts=RRT_RESTARTS, smooth=RRT_SMOOTHING,
-                    success_cost=0., max_time=INF, max_solutions=1, **kwargs):
-    """
-    :param start: Start configuration - conf
-    :param goal: End configuration - conf
-    :param distance_fn: Distance function - distance_fn(q1, q2)->float
-    :param sample_fn: Sample function - sample_fn()->conf
-    :param extend_fn: Extension function - extend_fn(q1, q2)->[q', ..., q"]
-    :param collision_fn: Collision function - collision_fn(q)->bool
-    :param max_time: Maximum runtime - float
-    :param kwargs: Keyword arguments
-    :return: Paths [[q', ..., q"], [[q'', ..., q""]]
-    """
-    start_time = time.time()
-    solutions = []
-    path = check_direct_with_controls(robot, start, goal, extend_fn, collision_fn)
-    if path is False:
-        return None
-    if path is not None:
-        solutions.append(path)
 
-    for attempt in irange(restarts + 1):
-        if (len(solutions) >= max_solutions) or (elapsed_time(start_time) >= max_time):
-            break
-        attempt_time = (max_time - elapsed_time(start_time))
-        path = solve_fn(robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
-                        max_time=attempt_time, **kwargs)
-        if path is None:
-            continue
-        path = smooth_path_with_controls(path, robot, extend_fn, collision_fn, max_iterations=smooth,
-                           max_time=max_time-elapsed_time(start_time))
-        solutions.append(path)
-        if compute_path_cost(path, distance_fn) < success_cost:
-            break
-    solutions = sorted(solutions, key=lambda path: compute_path_cost(path, distance_fn))
-    print('Solutions ({}): {} | Time: {:.3f}'.format(len(solutions), [(len(path), round(compute_path_cost(
-        path, distance_fn), 3)) for path in solutions], elapsed_time(start_time)))
-    return solutions
 
 
 def random_restarts(solve_fn, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,

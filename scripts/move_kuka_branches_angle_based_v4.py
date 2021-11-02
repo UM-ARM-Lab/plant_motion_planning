@@ -9,13 +9,13 @@ from pybullet_tools.kuka_primitives import BodyPose, BodyConf, Command, get_gras
     get_free_motion_gen_with_angle_constraints_v4
 from pybullet_tools.utils import WorldSaver, enable_gravity, connect, dump_world, set_pose, \
     draw_global_system, draw_pose, set_camera_pose, Pose, Point, Euler, set_default_camera, stable_z, \
-    BLOCK_URDF, load_model, wait_if_gui, disconnect, DRAKE_IIWA_URDF, wait_if_gui, update_state,\
+    BLOCK_URDF, load_model, wait_if_gui, disconnect, DRAKE_IIWA_URDF, wait_if_gui, update_state, \
     disable_real_time, enable_real_time, HideOutput, create_box, GREEN, BROWN, pairwise_collision, \
-    DRAKE_IIWA_URDF_EDIT, save_state, get_distance_fn
+    DRAKE_IIWA_URDF_EDIT, save_state, get_distance_fn, get_movable_joints, set_joint_positions
 import pybullet as p
 import numpy as np
 from plant_motion_planning import representation
-from .utils import set_random_poses, make_plant_responsive, set_random_pose, generate_plants, envs
+from .utils import set_random_poses, make_plant_responsive, set_random_pose, generate_plants, envs, step_sim
 
 from datetime import datetime
 
@@ -31,6 +31,7 @@ def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g, 
 
     num_attempts = 200
 
+    path = []
     for attempt in range(num_attempts):
 
         result = free_motion_fn(conf_i, conf_g)
@@ -39,7 +40,50 @@ def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g, 
             continue
         else:
             path, = result
-            return Command(path.body_paths)
+            break
+            # return Command(path.body_paths)
+
+    # input("executing path...")
+
+    p.restoreState(start_state_id)
+
+    joints = get_movable_joints(robot)
+    position_gains = 7 * [0.01]
+
+    set_joint_positions(robot, joints, init_conf)
+    p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, init_conf, positionGains=position_gains)
+    for t in range(20):
+        step_sim()
+
+    input("press enter to execute forward path!")
+    print("***********************************")
+    print("path smoothed: ", path.body_paths[0].path)
+    print("***********************************")
+    for q in path.body_paths[0].path:
+
+        p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, q, positionGains=position_gains)
+
+        for t in range(10):
+            step_sim()
+
+        for e, b in enumerate(movable):
+            b.observe()
+
+            print("Deflection of plant %d: %f" % (e, b.deflection))
+
+            if(b.deflection > deflection_limit):
+                print("Error! Deflection limit exceeded!")
+                input("")
+                    # exit()
+
+
+            # input("press enter to step...")
+
+
+    # wait_if_gui("Press enter to continue...")
+    exit()
+
+    return Command(path.body_paths)
 
     return None
 
@@ -64,12 +108,12 @@ def main(display='execute'): # control | execute | step
     draw_global_system()
     with HideOutput():
         robot = load_model(DRAKE_IIWA_URDF_EDIT, fixed_base = True) # KUKA_IIWA_URDF | DRAKE_IIWA_URDF
-        floor = load_model('models/short_floor.urdf')
+        floor = load_model('models/short_floor.urdf', fixed_base=True)
     block = load_model(BLOCK_URDF, fixed_base=True)
     set_pose(block, Pose(Point(x=0.4,y=-0.4,z=0.45),Euler(yaw=1.57)))
 
     # Get plant positions given the kind of placement of plants required
-    plant_positions = envs["env5"]
+    plant_positions = envs["env1"]
 
     # Generate plants given positions
     plant_ids, plant_representations = generate_plants(num_plants=5, positions=plant_positions, floor=floor)

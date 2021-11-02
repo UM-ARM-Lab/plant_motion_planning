@@ -54,7 +54,7 @@ def refine_waypoints(waypoints, extend_fn):
     return list(flatten(extend_fn(q1, q2) for q1, q2 in get_pairs(waypoints))) # [waypoints[0]] +
 
 
-def smooth_path_v4(path, node_path, extend_fn, collision_fn, distance_fn=None, max_iterations=50, max_time=INF, verbose=False):
+def smooth_path_v4(robot, path, node_path, extend_fn, collision_fn, distance_fn=None, max_iterations=50, max_time=INF, verbose=False):
     """
     :param distance_fn: Distance function - distance_fn(q1, q2)->float
     :param extend_fn: Extension function - extend_fn(q1, q2)->[q', ..., q"]
@@ -112,10 +112,10 @@ def smooth_path_v4(path, node_path, extend_fn, collision_fn, distance_fn=None, m
 
         i, j = segment1
 
-        print("*******************")
-        print("point1: ", point1)
-        print("waypoints[i]: ", waypoints[i])
-        print("*******************")
+        # print("*******************")
+        # print("point1: ", point1)
+        # print("waypoints[i]: ", waypoints[i])
+        # print("*******************")
 
         if(np.linalg.norm(np.array(point1) - np.array(waypoints[i])) < np.linalg.norm(np.array(point1) -                                                                      np.array(waypoints[j]))):
             point1_node = waypoints_nodes[i]
@@ -132,6 +132,13 @@ def smooth_path_v4(path, node_path, extend_fn, collision_fn, distance_fn=None, m
 
         flag = 0
         point1_node.restore_state()
+        pybullet_tools.utils.set_joint_positions(robot, pybullet_tools.utils.get_movable_joints(robot),
+                                                 point1_node.config)
+        pybullet.setJointMotorControlArray(robot, pybullet_tools.utils.get_movable_joints(robot),
+                                           pybullet.POSITION_CONTROL, point1_node.config, positionGains=7 * [0.01])
+        for t in range(10):
+            s_utils.step_sim()
+
 
         # input("performing collision check...")
         print("performing collision check...")

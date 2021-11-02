@@ -3777,7 +3777,7 @@ def get_collision_fn_with_angle_constraints_v2(body, joints, obstacles=[], movab
                                                attachments=[], self_collisions=True, disabled_collisions=set(),
                                             custom_limits={}, use_aabb=False, cache=False, max_distance=MAX_DISTANCE, **kwargs):
 
-    is_colliding = get_collision_fn(body, joints, obstacles, attachments, self_collisions, disabled_collisions,
+    is_colliding = get_collision_fn_with_controls(body, joints, obstacles, attachments, self_collisions, disabled_collisions,
                                         custom_limits, use_aabb, cache, max_distance, **kwargs)
 
     def collision_fn(q, verbose=False):
@@ -4220,6 +4220,36 @@ def plan_joint_motion_with_angle_constraints_v5(body, start_state_id, joints, en
     return birrt_v4(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
                     movable, **kwargs)
 
+
+
+def plan_joint_motion_with_controls(body, joints, end_conf, obstacles=[], attachments=[],
+                                    self_collisions=True, disabled_collisions=set(),
+                                    weights=None, resolutions=None, max_distance=MAX_DISTANCE,
+                                    use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
+
+    assert len(joints) == len(end_conf)
+    if (weights is None) and (resolutions is not None):
+        weights = np.reciprocal(resolutions)
+    sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
+    distance_fn = get_distance_fn(body, joints, weights=weights)
+    extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
+    collision_fn = get_collision_fn_with_controls(body, joints, obstacles, attachments, self_collisions,
+                                                  disabled_collisions,
+                                                  custom_limits=custom_limits, max_distance=max_distance,
+                                                  use_aabb=use_aabb, cache=cache)
+
+    start_conf = get_joint_positions(body, joints)
+    if not check_initial_end_with_controls(body, start_conf, end_conf, collision_fn):
+        return None
+
+    if algorithm is None:
+        # return rrt_connect_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
+        #                                  **kwargs)
+        return birrt_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
+        # return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
+    return solve(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, algorithm=algorithm, **kwargs)
+    #return plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)
+
 def plan_joint_motion_with_angle_contraints_v4(body, start_state_id, joints, end_conf, obstacles=[], attachments=[],
                                                movable = [], deflection_limit = 0, self_collisions=True, disabled_collisions=set(),
                                                weights=None, resolutions=None, max_distance=MAX_DISTANCE,
@@ -4248,7 +4278,7 @@ def plan_joint_motion_with_angle_contraints_v4(body, start_state_id, joints, end
         s_utils.step_sim()
         time.sleep(0.01)
 
-    if not check_initial_end_v4(body, start_conf, end_conf, collision_fn):
+    if not check_initial_end_with_controls(body, start_conf, end_conf, collision_fn):
         return None
 
     # return rrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
@@ -4369,33 +4399,7 @@ def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
 
 
 
-def plan_joint_motion_with_controls(body, joints, end_conf, obstacles=[], attachments=[],
-                      self_collisions=True, disabled_collisions=set(),
-                      weights=None, resolutions=None, max_distance=MAX_DISTANCE,
-                      use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
 
-    assert len(joints) == len(end_conf)
-    if (weights is None) and (resolutions is not None):
-        weights = np.reciprocal(resolutions)
-    sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
-    distance_fn = get_distance_fn(body, joints, weights=weights)
-    extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
-    collision_fn = get_collision_fn_with_controls(body, joints, obstacles, attachments, self_collisions,
-                                                  disabled_collisions,
-                                    custom_limits=custom_limits, max_distance=max_distance,
-                                    use_aabb=use_aabb, cache=cache)
-
-    start_conf = get_joint_positions(body, joints)
-    if not check_initial_end_with_controls(body, start_conf, end_conf, collision_fn):
-        return None
-
-    if algorithm is None:
-        # return rrt_connect_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
-        #                                  **kwargs)
-        return birrt_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
-        # return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
-    return solve(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, algorithm=algorithm, **kwargs)
-    #return plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)
 
 
 plan_holonomic_motion = plan_joint_motion

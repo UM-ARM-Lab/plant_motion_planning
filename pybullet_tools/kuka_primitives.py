@@ -668,7 +668,7 @@ def get_free_motion_gen_with_angle_constraints_v4(robot, start_state_id, fixed=[
         # if teleport:
         #     path = [conf1.configuration, conf2.configuration]
 
-        conf1.assign()
+        conf1.assign_with_controls()
         obstacles = fixed + assign_fluent_state(fluents)
 
         path = plan_joint_motion_with_angle_contraints_v4(robot, start_state_id, conf2.joints, conf2.configuration,

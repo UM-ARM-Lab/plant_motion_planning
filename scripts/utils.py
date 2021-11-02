@@ -85,7 +85,7 @@ def generate_plants(num_plants, positions, floor):
 envs = {
     "env0": [
         [0.4, 0.1],
-        [0.12, -0.15],
+        [0.05, -0.15],
         [-0.25, 0.60],
         [-0.25, 0.45],
         [-0.05, 0.50]
