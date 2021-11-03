@@ -150,7 +150,8 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
             for t in range(20):
                 s_utils.step_sim()
 
-            input("press enter to check the forward path!")
+            # input("press enter to check the forward path!")
+            print("press enter to check the forward path!")
 
             # for q in path_smoothed:
             #
@@ -170,19 +171,23 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
 
             for q in path_smoothed:
 
-                if(collision_fn(q)):
+                if(collision_fn(q, True)):
                     # input("collision detected in forward path... Press enter to abandon current path...")
                     print("collision detected in forward path... Press enter to abandon current path...")
-                    for e, b in enumerate(movable):
-                        b.observe()
-                        print("Deflection of plant %d: %f" % (e, b.deflection))
+                    # for e, b in enumerate(movable):
+                    #     b.observe()
+                    #     print("Deflection of plant %d: %f" % (e, b.deflection))
+                    import pickle
+                    with open('path_smoothed.pkl', 'wb') as f:
+                        pickle.dump([path_smoothed], f)
 
+                    # input("")
                     flag = 1
                     break
 
-                for e, b in enumerate(movable):
-                    b.observe()
-                    print("Deflection of plant %d: %f" % (e, b.deflection))
+                # for e, b in enumerate(movable):
+                #     b.observe()
+                #     print("Deflection of plant %d: %f" % (e, b.deflection))
 
             print("=====================================")
 

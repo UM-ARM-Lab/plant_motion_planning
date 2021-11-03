@@ -55,15 +55,16 @@ def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g, 
     for t in range(20):
         step_sim()
 
-    input("press enter to execute forward path!")
-    print("***********************************")
-    print("path smoothed: ", path.body_paths[0].path)
-    print("***********************************")
+    # input("press enter to execute forward path!")
+    print("press enter to execute forward path!")
+    # print("***********************************")
+    # print("path smoothed: ", path.body_paths[0].path)
+    # print("***********************************")
     for q in path.body_paths[0].path:
 
         p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, q, positionGains=position_gains)
 
-        for t in range(10):
+        for t in range(11):
             step_sim()
 
         for e, b in enumerate(movable):
@@ -73,8 +74,12 @@ def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g, 
 
             if(b.deflection > deflection_limit):
                 print("Error! Deflection limit exceeded!")
+                import pickle
+                with open('path_smoothed.pkl', 'wb') as f:
+                    pickle.dump([path.body_paths[0].path], f)
+
                 input("")
-                    # exit()
+                # exit()
 
 
             # input("press enter to step...")

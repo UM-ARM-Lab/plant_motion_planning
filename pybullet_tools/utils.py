@@ -3787,8 +3787,11 @@ def get_collision_fn_with_angle_constraints_v2(body, joints, obstacles=[], movab
 
         # step_simulation()
         s_utils.step_sim()
-        for b in movable:
+        for e, b in enumerate(movable):
             b.observe()
+
+            if(verbose):
+                print("Deflection of plant in collision fn %d: %f" % (e, b.deflection))
 
             if(b.deflection > deflection_limit):
                 print("=======================")
@@ -4082,7 +4085,7 @@ def check_initial_end_with_controls(robot, start_conf, end_conf, collision_fn, v
     joints = get_movable_joints(robot)
 
     set_joint_positions(robot, joints, start_conf)
-    if collision_fn(start_conf, verbose=verbose):
+    if collision_fn(start_conf):
         print('Error! Initial configuration is in collision')
         exit()
 
@@ -4102,7 +4105,7 @@ def check_initial_end_with_controls(robot, start_conf, end_conf, collision_fn, v
 
     # input("joints set to goal config. Press enter to check goal config...")
 
-    if collision_fn(end_conf, verbose=verbose):
+    if collision_fn(end_conf):
         print('Error! End configuration is in collision')
         exit()
 
