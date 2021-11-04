@@ -26,30 +26,31 @@ base_ori = [0, 0, 0, 1]
 stem_width = 0.2
 col_stem_id = p.createCollisionShape(
     p.GEOM_BOX, halfExtents=[stem_width, stem_width, 3 * stem_width],
-    collisionFramePosition=[0, 0, 0.4]
+    collisionFramePosition=[0, 0, 1.0]
 )
 vis_stem_id = p.createCollisionShape(
     p.GEOM_BOX, halfExtents=[stem_width, stem_width, 3 * stem_width]
 )
 
 col_v1_id = p.createCollisionShape(
-    p.GEOM_BOX, halfExtents=[0, 0, 3 * stem_width],
-    collisionFramePosition=[0, 0, 0.4]
+    p.GEOM_BOX, halfExtents=[0, 0, 0],
+    collisionFramePosition=[0, 0, 1.0]
 )
 vis_v1_id = p.createCollisionShape(
-    p.GEOM_BOX, halfExtents=[stem_width, stem_width, 3 * stem_width]
+    p.GEOM_BOX, halfExtents=[0, 0, 0]
+    # collisionFramePosition=[0, 0, 0]
 )
 
 link_Masses = [1, 1]
-linkCollisionShapeIndices = [col_stem_id]
-linkVisualShapeIndices = [vis_stem_id]
-linkPositions = [[0, 0, 0.7]]
-linkOrientations = [[0, 0, 0, 1]]
-linkInertialFramePositions = [[10, 10, 10]]
-linkInertialFrameOrientations = [[0, 0, 0, 1]]
-indices = [0]
-jointTypes = [p.JOINT_REVOLUTE]
-axis = [[0, 1, 0]]
+linkCollisionShapeIndices = [col_v1_id, col_stem_id]
+linkVisualShapeIndices = [vis_v1_id, vis_stem_id]
+linkPositions = [[0, 0, 0.2], [0, 0, 0.0]]
+linkOrientations = [[0, 0, 0, 1], [0, 0, 0, 1]]
+linkInertialFramePositions = [[0, 0, 0], [0, 0, 3]]
+linkInertialFrameOrientations = [[0, 0, 0, 1], [0, 0, 0, 1]]
+indices = [0, 1]
+jointTypes = [p.JOINT_REVOLUTE, p.JOINT_REVOLUTE]
+axis = [[1, 0, 0], [0, 1, 0]]
 
 # Making the plant
 base_id = p.createMultiBody(
