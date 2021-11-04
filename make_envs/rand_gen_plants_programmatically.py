@@ -39,6 +39,19 @@ def create_stem_element(stem_half_length, stem_half_width, stem_half_height):
 
     return [col_v1_id, col_stem_id], [vis_v1_id, vis_stem_id]
 
+def intersection_with_others(x, y, history, tolerance=0.03):
+    if(len(history) == 0):
+        history.append((x,y))
+        return False
+    else:
+
+        for prev in history:
+            if(np.abs(x - prev[0]) < tolerance and np.abs(y - prev[1]) < tolerance):
+                return True
+
+        history.append((x, y))
+        return False
+
 
 def create_plant_params():
 
@@ -82,31 +95,31 @@ def create_plant_params():
     axis = []
 
     total_num_stems = 2
-    for ith_stem in range(total_num_stems):
+    history = []
 
-        link_mass = 1
-        col_stem_id, vis_stem_id = create_stem_element(stem_half_length, stem_half_width, stem_half_height)
+    exit_out = False
+    ith_stem = 0
+    num_branches_per_stem = 2
+    branch_count = 0
 
-        link_Masses  = link_Masses + [link_mass, link_mass]
-        linkCollisionShapeIndices = linkCollisionShapeIndices + col_stem_id
-        linkVisualShapeIndices = linkVisualShapeIndices + vis_stem_id
+    while(exit_out == False):
+
 
         if(ith_stem == 0):
             # Create a stem at the center of the base if its the 0th stem (first stem on the base)
             v1_pos = [0, 0, base_half_height]
             v1_ori = p.getQuaternionFromEuler((0, 0, 0.0))
             vert_stem_count = 1
+            ith_stem = 1
 
             # Increment by 2 as 2 links have been added with the creating of a stem - v1 and the stem itself
             current_index = current_index + 2
             indices = indices + [main_stem_index, current_index - 1]
             main_stem_index = current_index
 
-        else:
-            # Create a branch 50% of the time
-            if(random.random() < 1.00):
-                # Attach this stem as a branch
+        elif(branch_count <= num_branches_per_stem):
 
+            while(1):
                 if(random.random() < 0.5):
                     x = random.choice([0.2, -0.2])
                     y = np.random.uniform(low=0.0, high=0.2)
@@ -114,36 +127,52 @@ def create_plant_params():
                     y = random.choice([0.2, -0.2])
                     x = np.random.uniform(low=0.0, high=0.2)
 
-
-                if(x < 0):
-                    pitch = np.random.uniform(low=-2.0, high=-0.5)
+                if(intersection_with_others(x,y, history, tolerance=0.2)):
+                    continue
                 else:
-                    pitch = np.random.uniform(low=0.5, high=2.0)
+                    branch_count = branch_count + 1
+                    break
 
-                if(y < 0):
-                    roll = np.random.uniform(low=-2.0, high=-0.5)
-                else:
-                    roll = np.random.uniform(low=0.5, high=2.0)
 
-                v1_pos = [x, y, stem_base_spacing + stem_half_height]
-
-                # print("roll: ", roll)
-                # print("pitch: ", pitch)
-
-                v1_ori = p.getQuaternionFromEuler((roll, pitch, 0.0))
-
-                current_index = current_index + 2
-                indices = indices + [main_stem_index, current_index - 1]
-
+            if(x < 0):
+                pitch = np.random.uniform(low=-1.5, high=-0.5)
             else:
-                # Stack this stem on top of the old stem vertically
-                vert_stem_count = vert_stem_count + 1
-                v1_pos = [0, 0, stem_base_spacing + (2 * stem_half_height)]
-                v1_ori = p.getQuaternionFromEuler((0, 0, 0.0))
+                pitch = np.random.uniform(low=0.5, high=1.5)
 
-                current_index = current_index + 2
-                indices = indices + [main_stem_index, current_index - 1]
-                main_stem_index = current_index
+            if(y < 0):
+                roll = np.random.uniform(low=-1.5, high=-0.5)
+            else:
+                roll = np.random.uniform(low=0.5, high=1.5)
+
+            v1_pos = [x, y, stem_base_spacing + stem_half_height]
+
+            print("roll: ", roll)
+            print("pitch: ", pitch)
+
+            v1_ori = p.getQuaternionFromEuler((roll, pitch, 0.0))
+
+            current_index = current_index + 2
+            indices = indices + [main_stem_index, current_index - 1]
+
+        else:
+            exit_out = True
+            break
+            # # Stack this stem on top of the old stem vertically
+            # vert_stem_count = vert_stem_count + 1
+            # v1_pos = [0, 0, stem_base_spacing + (2 * stem_half_height)]
+            # v1_ori = p.getQuaternionFromEuler((0, 0, 0.0))
+            #
+            # current_index = current_index + 2
+            # indices = indices + [main_stem_index, current_index - 1]
+            # main_stem_index = current_index
+
+
+        link_mass = 1
+        col_stem_id, vis_stem_id = create_stem_element(stem_half_length, stem_half_width, stem_half_height)
+
+        link_Masses  = link_Masses + [link_mass, link_mass]
+        linkCollisionShapeIndices = linkCollisionShapeIndices + col_stem_id
+        linkVisualShapeIndices = linkVisualShapeIndices + vis_stem_id
 
         linkPositions = linkPositions + [v1_pos, [0, 0, 0]]
         linkOrientations = linkOrientations + [v1_ori, [0, 0, 0, 1]]
