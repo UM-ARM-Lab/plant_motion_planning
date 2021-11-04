@@ -118,7 +118,7 @@ def main(display='execute'): # control | execute | step
     set_pose(block, Pose(Point(x=0.4,y=-0.4,z=0.45),Euler(yaw=1.57)))
 
     # Get plant positions given the kind of placement of plants required
-    plant_positions = envs["env1"]
+    plant_positions = envs["env2"]
 
     # Generate plants given positions
     plant_ids, plant_representations = generate_plants(num_plants=5, positions=plant_positions, floor=floor)
