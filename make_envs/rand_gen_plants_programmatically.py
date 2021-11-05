@@ -18,14 +18,22 @@ p.createMultiBody(0, 0)
 
 stem_base_spacing = 0.1
 
-def create_stem_element(stem_half_length, stem_half_width, stem_half_height):
+# Variables to keep track of indices
+current_index = 0
+main_stem_index = 0
+
+stem_half_height = {}
+
+def create_stem_element(stem_half_length, stem_half_width):
+
+    stem_half_height[current_index] = np.random.uniform(low=0.3, high=0.7)
 
     col_stem_id = p.createCollisionShape(
-        p.GEOM_BOX, halfExtents=[stem_half_length, stem_half_width, stem_half_height],
-        collisionFramePosition=[0, 0, stem_base_spacing + stem_half_height]
+        p.GEOM_BOX, halfExtents=[stem_half_length, stem_half_width, stem_half_height[current_index]],
+        collisionFramePosition=[0, 0, stem_base_spacing + stem_half_height[current_index]]
     )
     vis_stem_id = p.createCollisionShape(
-        p.GEOM_BOX, halfExtents=[stem_half_length, stem_half_width, stem_half_height],
+        p.GEOM_BOX, halfExtents=[stem_half_length, stem_half_width, stem_half_height[current_index]],
     )
 
     col_v1_id = p.createCollisionShape(
@@ -55,6 +63,8 @@ def intersection_with_others(x, y, history, tolerance=0.03):
 
 def create_plant_params():
 
+    global current_index, main_stem_index
+
     base_half_width = np.random.uniform(low=0.15,high=0.5)
     base_half_length = np.random.uniform(low=0.15,high=0.5)
     base_half_height = np.random.uniform(low=0.15,high=1.0)
@@ -72,15 +82,13 @@ def create_plant_params():
     base_mass = 100000
 
     # Creating variables to keep track of the stem indices
-    current_index = 0
-    main_stem_index = 0
     indices = []
 
     ###############
 
     stem_half_length = 0.1
     stem_half_width = 0.1
-    stem_half_height = np.random.uniform(low=0.3, high=0.7)
+    # stem_half_height = np.random.uniform(low=0.3, high=0.7)
 
     link_Masses = []
     linkCollisionShapeIndices = []
@@ -124,7 +132,7 @@ def create_plant_params():
 
 
             if(num_extensions <= total_num_extensions):
-                v1_pos = [0, 0, stem_base_spacing + (2 * stem_half_height)]
+                v1_pos = [0, 0, stem_base_spacing + (2 * stem_half_height[current_index])]
 
                 if(random.random() < 0.5):
                     roll = np.random.uniform(low=-0.5,high=0.5)
@@ -177,7 +185,8 @@ def create_plant_params():
 
                     pitch = 0.0
 
-                v1_pos = [x, y, stem_base_spacing + stem_half_height]
+                v1_pos = [x, y, np.random.uniform(low=stem_base_spacing,
+                                                  high=stem_base_spacing + 2 * stem_half_height[main_stem_index])]
 
                 v1_ori = p.getQuaternionFromEuler((roll, pitch, yaw))
 
@@ -194,7 +203,7 @@ def create_plant_params():
             branch_count = 1
             history = []
 
-            v1_pos = [0, 0, stem_base_spacing + (2 * stem_half_height)]
+            v1_pos = [0, 0, stem_base_spacing + (2 * stem_half_height[main_stem_index])]
 
             if(random.random() < 0.5):
                 pitch = np.random.uniform(low=-0.4, high=0.4)
@@ -212,7 +221,7 @@ def create_plant_params():
 
 
         link_mass = 1
-        col_stem_id, vis_stem_id = create_stem_element(stem_half_length, stem_half_width, stem_half_height)
+        col_stem_id, vis_stem_id = create_stem_element(stem_half_length, stem_half_width)
 
         link_Masses  = link_Masses + [link_mass, link_mass]
         linkCollisionShapeIndices = linkCollisionShapeIndices + col_stem_id
