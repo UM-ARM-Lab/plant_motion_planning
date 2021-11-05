@@ -91,9 +91,9 @@ linkVisualShapeIndices = [vis_v1_id, vis_stem1_id, vis_v2_id, vis_stem2_id]
 # linkCollisionShapeIndices = col_stem1_id + col_stem2_id
 # linkVisualShapeIndices = vis_stem1_id + vis_stem2_id
 
-v2_ori = p.getQuaternionFromEuler((0.707, 0.707, 0.0))
+v2_ori = p.getQuaternionFromEuler((-0.707, 0., 0.4))
 
-linkPositions = [[0, 0, base_width], [0, 0, 0.0], [0.2, -0.2, 1.0], [0, 0, 0]]
+linkPositions = [[0, 0, base_width], [0, 0, 0.0], [0., 0.2, 1.0], [0, 0, 0]]
 linkOrientations = [[0, 0, 0, 1], [0, 0, 0, 1], v2_ori, [0, 0, 0, 1]]
 linkInertialFramePositions = [[0, 0, 0], [0, 0, 3],[0, 0, 0],[0, 0, 0]]
 linkInertialFrameOrientations = [[0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1]]

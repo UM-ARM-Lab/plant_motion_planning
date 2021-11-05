@@ -134,22 +134,38 @@ def create_plant_params():
                     break
 
 
-            if(x < 0):
-                pitch = np.random.uniform(low=-1.5, high=-0.5)
+            if(np.abs(x) > np.abs(y)):
+                if(x > 0):
+                    pitch = np.random.uniform(low=0.5, high=1.5)
+                else:
+                    pitch = np.random.uniform(low=-1.5, high=-0.5)
+                roll = 0.0
             else:
-                pitch = np.random.uniform(low=0.5, high=1.5)
+                if (y > 0):
+                    roll = np.random.uniform(low=-1.5, high=-0.5)
+                else:
+                    roll = np.random.uniform(low=0.5, high=1.5)
 
-            if(y < 0):
-                roll = np.random.uniform(low=-1.5, high=-0.5)
-            else:
-                roll = np.random.uniform(low=0.5, high=1.5)
+                pitch = 0.0
+
+            yaw = np.random.uniform(low=-0.5, high=0.5)
+
+            # if(x < 0):
+            #     pitch = np.random.uniform(low=-1.5, high=-0.5)
+            # else:
+            #     pitch = np.random.uniform(low=0.5, high=1.5)
+            #
+            # if(y < 0):
+            #     roll = np.random.uniform(low=-1.5, high=-0.5)
+            # else:
+            #     roll = np.random.uniform(low=0.5, high=1.5)
 
             v1_pos = [x, y, stem_base_spacing + stem_half_height]
 
             print("roll: ", roll)
             print("pitch: ", pitch)
 
-            v1_ori = p.getQuaternionFromEuler((roll, pitch, 0.0))
+            v1_ori = p.getQuaternionFromEuler((roll, pitch, yaw))
 
             current_index = current_index + 2
             indices = indices + [main_stem_index, current_index - 1]
