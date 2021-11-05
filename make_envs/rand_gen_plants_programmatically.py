@@ -107,9 +107,9 @@ def create_plant_params():
 
     exit_out = False
     ith_stem = 0
-    num_branches_per_stem = 2
+    num_branches_per_stem = 1
     branch_count = 1
-    total_num_vert_stems = 2
+    total_num_vert_stems = 3
     total_num_extensions = 1
     num_extensions = total_num_extensions + 1
 

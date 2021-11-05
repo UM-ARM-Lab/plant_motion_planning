@@ -55,6 +55,16 @@ def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g, 
     for t in range(20):
         step_sim()
 
+    log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
+                    fileName="./rec_env2.mp4")
+    text_id = []
+    p.addUserDebugText("Deflection limit: %0.3f rad" % (deflection_limit), [-1.95, 1, 1.05],
+                              textColorRGB=[1, 0, 0])
+    for e, b in enumerate(movable):
+        b.observe()
+        text_id.append(p.addUserDebugText("Deflection of plant " + str(e + 1) + ": " + str(b.deflection),
+                                                     [-2 - 0.2 * e, 1, 1 - 0.2 * e], textColorRGB=[0, 0, 0]))
+
     # input("press enter to execute forward path!")
     print("press enter to execute forward path!")
     # print("***********************************")
@@ -69,6 +79,10 @@ def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g, 
 
         for e, b in enumerate(movable):
             b.observe()
+
+            p.addUserDebugText("Deflection of plant " + str(e + 1) + ": %.3f rad" % (b.deflection),
+                                      [-2 - 0.07 * e, 1, 1 - 0.07 * e], textColorRGB=[0, 0, 0],
+                                      replaceItemUniqueId=text_id[e])
 
             print("Deflection of plant %d: %f" % (e, b.deflection))
 
@@ -86,6 +100,7 @@ def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g, 
 
 
     # wait_if_gui("Press enter to continue...")
+    p.stopStateLogging(log_id)
     exit()
 
     return Command(path.body_paths)
@@ -118,7 +133,7 @@ def main(display='execute'): # control | execute | step
     set_pose(block, Pose(Point(x=0.4,y=-0.4,z=0.45),Euler(yaw=1.57)))
 
     # Get plant positions given the kind of placement of plants required
-    plant_positions = envs["env1"]
+    plant_positions = envs["env3"]
 
     # Generate plants given positions
     plant_ids, plant_representations = generate_plants(num_plants=5, positions=plant_positions, floor=floor)
