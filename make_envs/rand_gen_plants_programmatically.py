@@ -101,6 +101,7 @@ def create_plant_params():
     ith_stem = 0
     num_branches_per_stem = 2
     branch_count = 0
+    total_num_vert_stems = 2
 
     while(exit_out == False):
 
@@ -136,15 +137,15 @@ def create_plant_params():
 
             if(np.abs(x) > np.abs(y)):
                 if(x > 0):
-                    pitch = np.random.uniform(low=0.5, high=1.5)
+                    pitch = np.random.uniform(low=0.7, high=1.5)
                 else:
-                    pitch = np.random.uniform(low=-1.5, high=-0.5)
+                    pitch = np.random.uniform(low=-1.5, high=-0.7)
                 roll = 0.0
             else:
                 if (y > 0):
-                    roll = np.random.uniform(low=-1.5, high=-0.5)
+                    roll = np.random.uniform(low=-1.5, high=-0.7)
                 else:
-                    roll = np.random.uniform(low=0.5, high=1.5)
+                    roll = np.random.uniform(low=0.7, high=1.5)
 
                 pitch = 0.0
 
@@ -162,25 +163,30 @@ def create_plant_params():
 
             v1_pos = [x, y, stem_base_spacing + stem_half_height]
 
-            print("roll: ", roll)
-            print("pitch: ", pitch)
+            # print("roll: ", roll)
+            # print("pitch: ", pitch)
 
             v1_ori = p.getQuaternionFromEuler((roll, pitch, yaw))
 
             current_index = current_index + 2
             indices = indices + [main_stem_index, current_index - 1]
 
-        else:
+        elif(vert_stem_count == total_num_vert_stems):
+            # input("chk2")
             exit_out = True
             break
-            # # Stack this stem on top of the old stem vertically
-            # vert_stem_count = vert_stem_count + 1
-            # v1_pos = [0, 0, stem_base_spacing + (2 * stem_half_height)]
-            # v1_ori = p.getQuaternionFromEuler((0, 0, 0.0))
-            #
-            # current_index = current_index + 2
-            # indices = indices + [main_stem_index, current_index - 1]
-            # main_stem_index = current_index
+        else:
+            # Stack this stem on top of the old stem vertically
+            vert_stem_count = vert_stem_count + 1
+            branch_count = 0
+            history = []
+
+            v1_pos = [0, 0, stem_base_spacing + (2 * stem_half_height)]
+            v1_ori = p.getQuaternionFromEuler((0, 0, 0.0))
+
+            current_index = current_index + 2
+            indices = indices + [main_stem_index, current_index - 1]
+            main_stem_index = current_index
 
 
         link_mass = 1
@@ -211,6 +217,8 @@ base_mass, col_base_id, vis_base_id, base_pos, base_ori = base_params
 
 link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, linkOrientations, \
     linkInertialFramePositions, linkInertialFrameOrientations, indices, jointTypes, axis = stems_params
+
+# input("chk1")
 
 # Making the plant
 base_id = p.createMultiBody(
