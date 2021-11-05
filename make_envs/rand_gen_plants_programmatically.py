@@ -16,7 +16,7 @@ p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
 p.createCollisionShape(p.GEOM_PLANE)
 p.createMultiBody(0, 0)
 
-stem_base_spacing = 0.4
+stem_base_spacing = 0.1
 
 def create_stem_element(stem_half_length, stem_half_width, stem_half_height):
 
@@ -55,9 +55,9 @@ def intersection_with_others(x, y, history, tolerance=0.03):
 
 def create_plant_params():
 
-    base_half_width = 0.2
-    base_half_length = 0.2
-    base_half_height = 0.2
+    base_half_width = np.random.uniform(low=0.15,high=0.5)
+    base_half_length = np.random.uniform(low=0.15,high=0.5)
+    base_half_height = np.random.uniform(low=0.15,high=1.0)
 
     col_base_id = p.createCollisionShape(
         p.GEOM_BOX, halfExtents=[base_half_width, base_half_length, base_half_height]
@@ -78,9 +78,9 @@ def create_plant_params():
 
     ###############
 
-    stem_half_length = 0.2
-    stem_half_width = 0.2
-    stem_half_height = 0.6
+    stem_half_length = 0.1
+    stem_half_width = 0.1
+    stem_half_height = np.random.uniform(low=0.3, high=0.7)
 
     link_Masses = []
     linkCollisionShapeIndices = []
@@ -100,8 +100,10 @@ def create_plant_params():
     exit_out = False
     ith_stem = 0
     num_branches_per_stem = 2
-    branch_count = 0
+    branch_count = 1
     total_num_vert_stems = 2
+    total_num_extensions = 1
+    num_extensions = total_num_extensions + 1
 
     while(exit_out == False):
 
@@ -120,56 +122,67 @@ def create_plant_params():
 
         elif(branch_count <= num_branches_per_stem):
 
-            while(1):
+
+            if(num_extensions <= total_num_extensions):
+                v1_pos = [0, 0, stem_base_spacing + (2 * stem_half_height)]
+
                 if(random.random() < 0.5):
-                    x = random.choice([0.2, -0.2])
-                    y = np.random.uniform(low=0.0, high=0.2)
+                    roll = np.random.uniform(low=-0.5,high=0.5)
+                    pitch = 0.0
                 else:
-                    y = random.choice([0.2, -0.2])
-                    x = np.random.uniform(low=0.0, high=0.2)
+                    pitch = np.random.uniform(low=-0.5,high=0.5)
+                    roll = 0.0
 
-                if(intersection_with_others(x,y, history, tolerance=0.2)):
-                    continue
-                else:
+                v1_ori = p.getQuaternionFromEuler((roll, pitch, 0.0))
+
+                indices = indices + [current_index, current_index + 1]
+                current_index = current_index + 2
+
+                if(num_extensions == total_num_extensions):
                     branch_count = branch_count + 1
-                    break
+
+                num_extensions = num_extensions + 1
 
 
-            if(np.abs(x) > np.abs(y)):
-                if(x > 0):
-                    pitch = np.random.uniform(low=0.7, high=1.5)
-                else:
-                    pitch = np.random.uniform(low=-1.5, high=-0.7)
-                roll = 0.0
             else:
-                if (y > 0):
-                    roll = np.random.uniform(low=-1.5, high=-0.7)
+                num_extensions = 1
+
+                while(1):
+                    if(random.random() < 0.5):
+                        x = random.choice([0.2, -0.2])
+                        y = np.random.uniform(low=0.0, high=0.2)
+                    else:
+                        y = random.choice([0.2, -0.2])
+                        x = np.random.uniform(low=0.0, high=0.2)
+
+                    if(intersection_with_others(x,y, history, tolerance=0.2)):
+                        continue
+                    else:
+                        # branch_count = branch_count + 1
+                        break
+
+                yaw = np.random.uniform(low=-0.5, high=0.5)
+
+                if(np.abs(x) > np.abs(y)):
+                    if(x > 0):
+                        pitch = np.random.uniform(low=0.7, high=1.5)
+                    else:
+                        pitch = np.random.uniform(low=-1.5, high=-0.7)
+                    roll = 0.0
                 else:
-                    roll = np.random.uniform(low=0.7, high=1.5)
+                    if (y > 0):
+                        roll = np.random.uniform(low=-1.5, high=-0.7)
+                    else:
+                        roll = np.random.uniform(low=0.7, high=1.5)
 
-                pitch = 0.0
+                    pitch = 0.0
 
-            yaw = np.random.uniform(low=-0.5, high=0.5)
+                v1_pos = [x, y, stem_base_spacing + stem_half_height]
 
-            # if(x < 0):
-            #     pitch = np.random.uniform(low=-1.5, high=-0.5)
-            # else:
-            #     pitch = np.random.uniform(low=0.5, high=1.5)
-            #
-            # if(y < 0):
-            #     roll = np.random.uniform(low=-1.5, high=-0.5)
-            # else:
-            #     roll = np.random.uniform(low=0.5, high=1.5)
+                v1_ori = p.getQuaternionFromEuler((roll, pitch, yaw))
 
-            v1_pos = [x, y, stem_base_spacing + stem_half_height]
-
-            # print("roll: ", roll)
-            # print("pitch: ", pitch)
-
-            v1_ori = p.getQuaternionFromEuler((roll, pitch, yaw))
-
-            current_index = current_index + 2
-            indices = indices + [main_stem_index, current_index - 1]
+                current_index = current_index + 2
+                indices = indices + [main_stem_index, current_index - 1]
 
         elif(vert_stem_count == total_num_vert_stems):
             # input("chk2")
@@ -178,11 +191,20 @@ def create_plant_params():
         else:
             # Stack this stem on top of the old stem vertically
             vert_stem_count = vert_stem_count + 1
-            branch_count = 0
+            branch_count = 1
             history = []
 
             v1_pos = [0, 0, stem_base_spacing + (2 * stem_half_height)]
-            v1_ori = p.getQuaternionFromEuler((0, 0, 0.0))
+
+            if(random.random() < 0.5):
+                pitch = np.random.uniform(low=-0.4, high=0.4)
+                roll = 0.0
+            else:
+                roll = np.random.uniform(low=-0.4, high=0.4)
+                pitch = 0.0
+
+            yaw = np.random.uniform(low=-0.4, high=0.4)
+            v1_ori = p.getQuaternionFromEuler((roll, pitch, yaw))
 
             current_index = current_index + 2
             indices = indices + [main_stem_index, current_index - 1]
