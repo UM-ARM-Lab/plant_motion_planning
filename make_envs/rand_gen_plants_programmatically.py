@@ -7,8 +7,13 @@ import pybullet as p
 import pybullet_data
 import time
 
+from pybullet_tools.utils import connect
+
 p.connect(p.GUI)
+# p.connect(p.GUI, options="--width=1920 --height=1080")
+# connect(use_gui=True,width=1920, height=1080)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
+
 
 # Remove debug visualizer
 p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
@@ -23,6 +28,8 @@ current_index = 0
 main_stem_index = 0
 
 stem_half_height = {}
+
+
 
 def create_stem_element(stem_half_length, stem_half_width):
 
@@ -107,9 +114,9 @@ def create_plant_params():
 
     exit_out = False
     ith_stem = 0
-    num_branches_per_stem = 1
+    num_branches_per_stem = 0
     branch_count = 1
-    total_num_vert_stems = 3
+    total_num_vert_stems = 1
     total_num_extensions = 1
     num_extensions = total_num_extensions + 1
 
@@ -220,7 +227,7 @@ def create_plant_params():
             main_stem_index = current_index
 
 
-        link_mass = 1
+        link_mass = 0.1
         col_stem_id, vis_stem_id = create_stem_element(stem_half_length, stem_half_width)
 
         link_Masses  = link_Masses + [link_mass, link_mass]
@@ -234,7 +241,7 @@ def create_plant_params():
         linkInertialFrameOrientations = linkInertialFrameOrientations + [[0, 0, 0, 1], [0, 0, 0, 1]]
 
         jointTypes = jointTypes + [p.JOINT_REVOLUTE, p.JOINT_REVOLUTE]
-        axis = axis + [[1, 0, 0], [0, 1, 0]]
+        axis = axis + [[0, 1, 0], [1, 0, 0]]
 
     return [base_mass, col_base_id, vis_base_id, base_pos, base_ori], [link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions,
                          linkOrientations, linkInertialFramePositions, linkInertialFrameOrientations, indices,
@@ -252,6 +259,8 @@ link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, l
 # input("chk1")
 
 # Making the plant
+# indices = [i-1 for i in indices]
+
 base_id = p.createMultiBody(
     base_mass, col_base_id, vis_base_id, base_pos, base_ori,
     linkMasses=link_Masses, linkCollisionShapeIndices=linkCollisionShapeIndices,
@@ -262,8 +271,61 @@ base_id = p.createMultiBody(
 )
 
 
+# joint_list = [0, 1, 2, 3, 4, 5]
+joint_list = [0, 1]
+# p.setJointMotorControlArray(base_id, joint_list, p.VELOCITY_CONTROL, targetVelocities=len(joint_list) * [0],
+#                             forces=len(joint_list) * [1e-1])  # make plant responsive to external force
+
+
+# p.changeDynamics(base_id, -1, jointDamping=10.0, maxJointVelocity=10.0, jointLowerLimit=-0.5, jointUpperLimit=0.5)
+
+# p.setRealTimeSimulation(1)
+
+# print("Number of joints: ", p.getNumJoints(base_id))
+
+# for j in range(p.getNumJoints(base_id)):
+#     # print(p.getJointInfo(base_id, j))
+#     parent_idx = p.getJointInfo(base_id, j)[-1]
+#
+#     p.changeDynamics(base_id, parent_idx, jointLowerLimit=-1.57, jointUpperLimit=1.57)
+#     # print(p.getJointInfo(base_id, j))
+#     # input("")
+
+# p.changeDynamics(base_id, 0, jointLowerLimit=-0.5, jointUpperLimit=0.5, jointLimitForce=0.0)
+# p.changeDynamics(base_id, 1, jointLowerLimit=-0.5, jointUpperLimit=0.5, jointLimitForce=0.0)
+p.changeDynamics(base_id, 0, jointLowerLimit=-0.5, jointUpperLimit=0.5)
+p.changeDynamics(base_id, 1, jointLowerLimit=-0.5, jointUpperLimit=0.5)
+
+# input("")
+
+time_limit = 10
+time_elapsed = time.time()
+
+# log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
+#                 fileName="../../simulation_recordings/misc/plant_gone_crazy1.mp4")
+
 p.setGravity(0, 0, -10)
-p.setRealTimeSimulation(1)
 
 while(1):
+
+
+    # if(time.time() - time_elapsed > time_limit):
+    #     break
+
+    kp = 5
+
+    for joint_idx in range(0, len(joint_list), 2):
+
+        plant_rot_joint_displacement_x, _, plant_hinge_x_reac, _ = p.getJointState(base_id, joint_idx)
+        plant_rot_joint_displacement_y, _, plant_hinge_y_reac, _ = p.getJointState(base_id, joint_idx + 1)
+
+        p.applyExternalTorque(base_id, linkIndex=joint_idx + 1,
+                              torqueObj=[-kp * plant_rot_joint_displacement_x, -kp * plant_rot_joint_displacement_y, 0],
+                              flags=p.WORLD_FRAME)
+
+        kp = kp - 1
+
+    p.stepSimulation()
     time.sleep(1/240.0)
+
+# p.stopStateLogging(log_id)
