@@ -54,7 +54,7 @@ def refine_waypoints(waypoints, extend_fn):
     return list(flatten(extend_fn(q1, q2) for q1, q2 in get_pairs(waypoints))) # [waypoints[0]] +
 
 
-def smooth_path_v4(robot, path, node_path, extend_fn, collision_fn, distance_fn=None, max_iterations=50, max_time=INF, verbose=False):
+def smooth_path_v4(robot, path, node_path, extend_fn, collision_fn, distance_fn=None, max_iterations=150, max_time=INF, verbose=False):
     """
     :param distance_fn: Distance function - distance_fn(q1, q2)->float
     :param extend_fn: Extension function - extend_fn(q1, q2)->[q', ..., q"]
@@ -82,8 +82,12 @@ def smooth_path_v4(robot, path, node_path, extend_fn, collision_fn, distance_fn=
     waypoints, waypoints_nodes = waypoints_from_path_v4(path, node_path)
 
     for iteration in irange(max_iterations):
+
+        print("smoothing iteration: ", iteration)
+
         #waypoints = waypoints_from_path(waypoints)
         if (elapsed_time(start_time) > max_time) or (len(waypoints) <= 2):
+            print("early exit!")
             break
         # TODO: smoothing in the same linear segment when circular
 

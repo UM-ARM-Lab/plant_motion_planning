@@ -15,9 +15,11 @@ from pybullet_tools.utils import WorldSaver, enable_gravity, connect, dump_world
 import pybullet as p
 import numpy as np
 from plant_motion_planning import representation
-from .utils import set_random_poses, make_plant_responsive, set_random_pose, generate_plants, envs, step_sim
+from .utils import set_random_poses, make_plant_responsive, set_random_pose, generate_plants, envs, step_sim, \
+    generate_tall_plants
 
 from datetime import datetime
+
 
 
 def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g, teleport=False):
@@ -36,76 +38,105 @@ def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g, 
 
         result = free_motion_fn(conf_i, conf_g)
 
-        if result is None:
+        if result is None or result[0] is None:
             continue
         else:
             path, = result
-            break
-            # return Command(path.body_paths)
+            # break
+            return Command(path.body_paths)
+
+    return None
 
     # input("executing path...")
 
-    p.restoreState(start_state_id)
-
-    joints = get_movable_joints(robot)
-    position_gains = 7 * [0.01]
-
-    set_joint_positions(robot, joints, init_conf)
-    p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, init_conf, positionGains=position_gains)
-    for t in range(20):
-        step_sim()
-
-    log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
-                    fileName="./rec_env2.mp4")
-    text_id = []
-    p.addUserDebugText("Deflection limit: %0.3f rad" % (deflection_limit), [-1.95, 1, 1.05],
-                              textColorRGB=[1, 0, 0])
-    for e, b in enumerate(movable):
-        b.observe()
-        text_id.append(p.addUserDebugText("Deflection of plant " + str(e + 1) + ": " + str(b.deflection),
-                                                     [-2 - 0.2 * e, 1, 1 - 0.2 * e], textColorRGB=[0, 0, 0]))
-
-    # input("press enter to execute forward path!")
-    print("press enter to execute forward path!")
-    # print("***********************************")
-    # print("path smoothed: ", path.body_paths[0].path)
-    # print("***********************************")
-    for q in path.body_paths[0].path:
-
-        p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, q, positionGains=position_gains)
-
-        for t in range(11):
-            step_sim()
-
-        for e, b in enumerate(movable):
-            b.observe()
-
-            p.addUserDebugText("Deflection of plant " + str(e + 1) + ": %.3f rad" % (b.deflection),
-                                      [-2 - 0.07 * e, 1, 1 - 0.07 * e], textColorRGB=[0, 0, 0],
-                                      replaceItemUniqueId=text_id[e])
-
-            print("Deflection of plant %d: %f" % (e, b.deflection))
-
-            if(b.deflection > deflection_limit):
-                print("Error! Deflection limit exceeded!")
-                import pickle
-                with open('path_smoothed.pkl', 'wb') as f:
-                    pickle.dump([path.body_paths[0].path], f)
-
-                input("")
-                # exit()
 
 
-            # input("press enter to step...")
-
-
-    # wait_if_gui("Press enter to continue...")
-    p.stopStateLogging(log_id)
-    exit()
-
-    return Command(path.body_paths)
-
-    return None
+# def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g, teleport=False):
+#
+#     start_state_id = save_state()
+#
+#     # free_motion_fn = get_free_motion_gen_with_angle_constraints_v2(robot, fixed=([block] + fixed), movable = movable,
+#     free_motion_fn = get_free_motion_gen_with_angle_constraints_v4(robot, start_state_id, fixed= fixed, movable = movable,
+#                                                                    deflection_limit = deflection_limit, teleport=teleport)
+#     # free_motion_fn = get_free_motion_gen(robot, fixed = (fixed), teleport=False)
+#
+#     num_attempts = 200
+#
+#     path = []
+#     for attempt in range(num_attempts):
+#
+#         result = free_motion_fn(conf_i, conf_g)
+#
+#         if result is None:
+#             continue
+#         else:
+#             path, = result
+#             break
+#             # return Command(path.body_paths)
+#
+#     # input("executing path...")
+#
+#     p.restoreState(start_state_id)
+#
+#     joints = get_movable_joints(robot)
+#     position_gains = 7 * [0.01]
+#
+#     set_joint_positions(robot, joints, init_conf)
+#     p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, init_conf, positionGains=position_gains)
+#     for t in range(20):
+#         step_sim()
+#
+#     log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
+#                     fileName="./rec_env2.mp4")
+#     text_id = []
+#     p.addUserDebugText("Deflection limit: %0.3f rad" % (deflection_limit), [-1.95, 1, 1.05],
+#                               textColorRGB=[1, 0, 0])
+#     for e, b in enumerate(movable):
+#         b.observe()
+#         text_id.append(p.addUserDebugText("Deflection of plant " + str(e + 1) + ": " + str(b.deflection),
+#                                                      [-2 - 0.2 * e, 1, 1 - 0.2 * e], textColorRGB=[0, 0, 0]))
+#
+#     # input("press enter to execute forward path!")
+#     print("press enter to execute forward path!")
+#     # print("***********************************")
+#     # print("path smoothed: ", path.body_paths[0].path)
+#     # print("***********************************")
+#     for q in path.body_paths[0].path:
+#
+#         p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, q, positionGains=position_gains)
+#
+#         for t in range(11):
+#             step_sim()
+#
+#         for e, b in enumerate(movable):
+#             b.observe()
+#
+#             p.addUserDebugText("Deflection of plant " + str(e + 1) + ": %.3f rad" % (b.deflection),
+#                                       [-2 - 0.07 * e, 1, 1 - 0.07 * e], textColorRGB=[0, 0, 0],
+#                                       replaceItemUniqueId=text_id[e])
+#
+#             print("Deflection of plant %d: %f" % (e, b.deflection))
+#
+#             if(b.deflection > deflection_limit):
+#                 print("Error! Deflection limit exceeded!")
+#                 import pickle
+#                 with open('path_smoothed.pkl', 'wb') as f:
+#                     pickle.dump([path.body_paths[0].path], f)
+#
+#                 input("")
+#                 # exit()
+#
+#
+#             # input("press enter to step...")
+#
+#
+#     # wait_if_gui("Press enter to continue...")
+#     p.stopStateLogging(log_id)
+#     exit()
+#
+#     return Command(path.body_paths)
+#
+#     return None
 
 
 init_conf = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
@@ -133,10 +164,10 @@ def main(display='execute'): # control | execute | step
     set_pose(block, Pose(Point(x=0.4,y=-0.4,z=0.45),Euler(yaw=1.57)))
 
     # Get plant positions given the kind of placement of plants required
-    plant_positions = envs["env3"]
+    plant_positions = envs["env1"]
 
     # Generate plants given positions
-    plant_ids, plant_representations = generate_plants(num_plants=5, positions=plant_positions, floor=floor)
+    plant_ids, plant_representations = generate_tall_plants(num_plants=5, positions=plant_positions, floor=floor)
 
     dump_world()
 
@@ -149,6 +180,8 @@ def main(display='execute'): # control | execute | step
 
     conf_i = BodyConf(robot, configuration=init_conf)
     conf_g = BodyConf(robot, configuration=goal_conf)
+
+    # input("")
 
     # Moving arm from conf_i to conf_g
     command = move_arm_conf2conf(robot, [floor, block], plant_representations, deflection_limit,
@@ -163,8 +196,9 @@ def main(display='execute'): # control | execute | step
     update_state()
     # wait_if_gui('{}?'.format(display))
 
-    # log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
-    #                 fileName="../testing_data/angle_constraint_v4_1/video_recordings/env5/trial5.mp4")
+    log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
+                                 fileName="../testing_data/angle_constraint_with_controls/video_recordings/env1/trial1.mp4")
+
     if display == 'control':
         enable_gravity()
         command.control(real_time=False, dt=0)
@@ -175,7 +209,9 @@ def main(display='execute'): # control | execute | step
     elif display == 'step':
         command.step()
     elif display == 'angle_step':
-        command.execute_with_movable_plant_angle_constraint(robot, block, plant_ids, plant_representations,
+        # command.execute_with_movable_plant_angle_constraint(robot, block, plant_ids, plant_representations,
+        #                                                     deflection_limit)
+        command.execute_with_controls(robot, init_conf, block, plant_ids, plant_representations,
                                                             deflection_limit)
     else:
         raise ValueError(display)

@@ -143,16 +143,17 @@ class BodyPath(object):
         for i, configuration in enumerate(self.path):
 
             # set_joint_positions(self.body, self.joints, configuration)
-
             pybullet.setJointMotorControlArray(self.body, self.joints, pybullet.POSITION_CONTROL, configuration,
                                                positionGains=position_gains)
-            for t in range(40):
-                # s_utils.step_sim()
-                pybullet.stepSimulation()
+
+            for t in range(11):
+                s_utils.step_sim()
 
             for grasp in self.attachments:
                 grasp.assign()
+
             yield i
+
     def control(self, real_time=False, dt=0):
         # TODO: just waypoints
         if real_time:
@@ -312,6 +313,102 @@ class Command(object):
                 # wait_if_gui("press enter to move to next step")
 
             # total_path_cost = compute_path_cost(body_path.path, distance_fn)
+
+        total_cost = total_ee_path_cost + (alpha * deflection_over_limit)
+
+        print("====================================================")
+        print("total path cost: ", total_ee_path_cost)
+        print("total Deflection over limit: ", deflection_over_limit)
+        print("alpha: ", alpha)
+        print("====================================================")
+        print("Total cost: ", total_cost)
+        print("====================================================")
+
+
+
+    def execute_with_controls(self,robot, init_conf, block, plant_id = [], movable = [],
+                                                    deflection_limit = 0, time_step=0.05):
+
+        # distance_fn, alpha = cost_utils
+
+        total_cost = 0
+        total_ee_path_cost = 0
+        deflection_over_limit = 0
+        alpha = 0.1
+
+        text_id = []
+
+        # text_ori = pybullet.getQuaternionFromEuler([1.57, 0.0, 0.0])
+        text_ori = pybullet.getQuaternionFromEuler([0.62, 0.0, 0.5])
+
+        pybullet.addUserDebugText("Deflection limit: %0.3f rad" % (deflection_limit), [-1.95, 1, 1.05], textColorRGB=[1, 0, 0])
+
+        for e, b in enumerate(movable):
+            b.observe()
+            text_id.append(pybullet.addUserDebugText("Deflection of plant " + str(e + 1) + ": " + str(b.deflection),
+                                                     [-2 - 0.2 * e, 1, 1 - 0.2 * e], textColorRGB=[0, 0, 0]))
+
+        prev_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
+
+        joints = get_movable_joints(robot)
+        position_gains = 7 * [0.01]
+
+        set_joint_positions(robot, joints, init_conf)
+        pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, init_conf,
+                                           positionGains=position_gains)
+        for t in range(20):
+            s_utils.step_sim()
+
+        for i, body_path in enumerate(self.body_paths):
+            # for j in body_path.iterator():
+            for j in body_path.iterator_with_control():
+
+
+                #for pid in plant_id:
+                #    plant_rot_joint_displacement_y, _, plant_hinge_y_reac, _ = pybullet.getJointState(pid, 0)
+                #    plant_rot_joint_displacement_x, _, plant_hinge_x_reac, _ = pybullet.getJointState(pid, 1)
+                #    pybullet.applyExternalTorque(pid, linkIndex=1,
+                #                                 torqueObj=[-200 * plant_rot_joint_displacement_x,
+                #                                            -200 * plant_rot_joint_displacement_y, 0],
+                #                                 flags=pybullet.WORLD_FRAME)
+
+                # if(pairwise_collision(robot, 2)):
+                #     print("Collision Detected!!")
+                #     exit()
+
+                for e, b in enumerate(movable):
+                    b.observe()
+
+                    pybullet.addUserDebugText("Deflection of plant " + str(e + 1) + ": %.3f rad" % (b.deflection),
+                                              [-2 - 0.07 * e, 1, 1 - 0.07 * e], textColorRGB=[0, 0, 0],
+                                              replaceItemUniqueId=text_id[e])
+
+                    print("Deflection of plant %d: %f" % (e, b.deflection))
+
+                    if (b.deflection > deflection_limit):
+                        print("Error! Deflection limit exceeded!")
+                        deflection_over_limit = deflection_over_limit + (b.deflection - deflection_limit)
+
+                        import pickle
+                        with open('path_smoothed.pkl', 'wb') as f:
+                            pickle.dump([path.body_paths[0].path], f)
+
+                        input("")
+
+                print("========================================")
+
+                cur_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
+
+                total_ee_path_cost = total_ee_path_cost + np.linalg.norm(cur_ee_pos - prev_ee_pos)
+
+                prev_ee_pos = cur_ee_pos
+
+                #for t in range(23):
+                #    pybullet.stepSimulation()
+
+                    #time.sleep(time_step)
+                    # wait_for_duration(time_step)
+                # wait_if_gui("press enter to move to next step")
 
         total_cost = total_ee_path_cost + (alpha * deflection_over_limit)
 

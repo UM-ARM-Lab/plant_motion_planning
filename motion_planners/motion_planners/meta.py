@@ -114,8 +114,10 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
     #     solutions.append(path)
 
     smooth_attempts = 5
+    max_iterations_per_smoothing = 20
 
-    for attempt in irange(restarts + 1):
+    # for attempt in irange(restarts + 1):
+    while(1):
         if (len(solutions) >= max_solutions) or (elapsed_time(start_time) >= max_time):
             break
         attempt_time = (max_time - elapsed_time(start_time))
@@ -133,8 +135,9 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
         # input("Path found, press enter to start smoothing...")
 
         for smooth_attempt in range(smooth_attempts):
-            path_smoothed = smooth_path_v4(robot, path, node_path, extend_fn, collision_fn, max_iterations=smooth,
-                              max_time=max_time-elapsed_time(start_time))
+            path_smoothed = smooth_path_v4(robot, path, node_path, extend_fn, collision_fn,
+                                           max_iterations=max_iterations_per_smoothing,
+                                           max_time=max_time-elapsed_time(start_time))
 
             # Checking forward path
             flag = 0
@@ -177,9 +180,9 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
                     # for e, b in enumerate(movable):
                     #     b.observe()
                     #     print("Deflection of plant %d: %f" % (e, b.deflection))
-                    import pickle
-                    with open('path_smoothed.pkl', 'wb') as f:
-                        pickle.dump([path_smoothed], f)
+                    # import pickle
+                    # with open('path_smoothed.pkl', 'wb') as f:
+                    #     pickle.dump([path_smoothed], f)
 
                     # input("")
                     flag = 1

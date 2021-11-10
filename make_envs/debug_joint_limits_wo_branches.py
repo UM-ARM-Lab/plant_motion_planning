@@ -48,23 +48,43 @@ stem_half_width = 0.2
 stem_base_spacing = 0.3
 stem_half_height = 1 * stem_half_width
 
-col_stem1_id, vis_stem1_id = create_stem_element(stem_half_width, stem_half_width, 2 * stem_half_height)
-col_stem2_id, vis_stem2_id = create_stem_element(stem_half_width, stem_half_width, stem_half_height)
+# col_stem1_id, vis_stem1_id = create_stem_element(stem_half_width, stem_half_width, 2 * stem_half_height)
+# col_stem2_id, vis_stem2_id = create_stem_element(stem_half_width, stem_half_width, stem_half_height)
+#
+# link_Masses = [1, 1, 1, 1]
+# # linkCollisionShapeIndices = [col_v1_id, col_stem_id, col_v2_id, col_stem_id1]
+# # linkVisualShapeIndices = [vis_v1_id, vis_stem_id, vis_v2_id, vis_stem_id1]
+# linkCollisionShapeIndices = col_stem1_id + col_stem2_id
+# linkVisualShapeIndices = vis_stem1_id + vis_stem2_id
+# linkPositions = [[0, 0, base_width], [0, 0, 0.0], [0, 0, stem_base_spacing + (2 * stem_half_height)], [0, 0, 0]]
+# linkOrientations = [[0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1]]
+# linkInertialFramePositions = [[0, 0, 0], [0, 0, 3],[0, 0, 0],[0, 0, 0]]
+# linkInertialFrameOrientations = [[0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1]]
+# indices = [0, 1, 2, 3]
+# # indices = [-1, 0, 1, 2]
+# # jointTypes = [p.JOINT_REVOLUTE, p.JOINT_REVOLUTE]
+# jointTypes = [p.JOINT_REVOLUTE, p.JOINT_REVOLUTE, p.JOINT_REVOLUTE, p.JOINT_REVOLUTE]
+# axis = [[1, 0, 0], [0, 1, 0], [1, 0, 0], [0, 1, 0]]
 
-link_Masses = [1, 1, 1, 1]
+
+
+col_stem1_id, vis_stem1_id = create_stem_element(stem_half_width, stem_half_width, 2 * stem_half_height)
+
+link_Masses = [1, 1]
 # linkCollisionShapeIndices = [col_v1_id, col_stem_id, col_v2_id, col_stem_id1]
 # linkVisualShapeIndices = [vis_v1_id, vis_stem_id, vis_v2_id, vis_stem_id1]
-linkCollisionShapeIndices = col_stem1_id + col_stem2_id
-linkVisualShapeIndices = vis_stem1_id + vis_stem2_id
-linkPositions = [[0, 0, base_width], [0, 0, 0.0], [0, 0, stem_base_spacing + (2 * stem_half_height)], [0, 0, 0]]
-linkOrientations = [[0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1]]
-linkInertialFramePositions = [[0, 0, 0], [0, 0, 3],[0, 0, 0],[0, 0, 0]]
-linkInertialFrameOrientations = [[0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1]]
-indices = [0, 1, 2, 3]
+linkCollisionShapeIndices = col_stem1_id
+linkVisualShapeIndices = vis_stem1_id
+linkPositions = [[0, 0, base_width], [0, 0, 0.0]]
+linkOrientations = [[0, 0, 0, 1], [0, 0, 0, 1]]
+linkInertialFramePositions = [[0, 0, 0], [0, 0, 3]]
+linkInertialFrameOrientations = [[0, 0, 0, 1], [0, 0, 0, 1]]
+indices = [0, 1]
 # indices = [-1, 0, 1, 2]
 # jointTypes = [p.JOINT_REVOLUTE, p.JOINT_REVOLUTE]
-jointTypes = [p.JOINT_REVOLUTE, p.JOINT_REVOLUTE, p.JOINT_REVOLUTE, p.JOINT_REVOLUTE]
-axis = [[1, 0, 0], [0, 1, 0], [1, 0, 0], [0, 1, 0]]
+jointTypes = [p.JOINT_REVOLUTE, p.JOINT_REVOLUTE]
+axis = [[1, 0, 0], [0, 1, 0]]
+
 
 # Making the plant
 base_id = p.createMultiBody(
@@ -76,9 +96,20 @@ base_id = p.createMultiBody(
     linkJointTypes=jointTypes, linkJointAxis=axis
 )
 
+for j in range(p.getNumJoints(base_id)):
+    print(p.getJointInfo(base_id, j))
+
+p.changeDynamics(base_id, -1, jointLowerLimit=-0.5, jointUpperLimit=0.5)
+p.changeDynamics(base_id, 0, jointLowerLimit=-0.5, jointUpperLimit=0.5)
+p.changeDynamics(base_id, 1, jointLowerLimit=-0.5, jointUpperLimit=0.5)
+
+# input("")
+
 
 p.setGravity(0, 0, -10)
-p.setRealTimeSimulation(1)
+# p.setRealTimeSimulation(1)
 
 while(1):
+
+    p.stepSimulation()
     time.sleep(1/240.0)
