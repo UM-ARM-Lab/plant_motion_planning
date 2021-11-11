@@ -92,7 +92,7 @@ def random_restarts_with_controls(solve_fn, robot, start, goal, distance_fn, sam
 
 def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
                        movable, restarts=RRT_RESTARTS, smooth=RRT_SMOOTHING,
-                       success_cost=0., max_time=INF, max_solutions=1, **kwargs):
+                       success_cost=0., max_time=INF, max_solutions=2, **kwargs):
     """
     :param start: Start configuration - conf
     :param goal: End configuration - conf
@@ -107,6 +107,7 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
 
     start_time = time.time()
     solutions = []
+    path_lengths = []
     # path = check_direct(start, goal, extend_fn, collision_fn)
     # if path is False:
     #     return None
@@ -117,9 +118,14 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
     max_iterations_per_smoothing = 20
 
     # for attempt in irange(restarts + 1):
+
+
     while(1):
         if (len(solutions) >= max_solutions) or (elapsed_time(start_time) >= max_time):
             break
+
+        print("Calculating solution: %d" % (len(solutions) + 1))
+
         attempt_time = (max_time - elapsed_time(start_time))
         path_data = solve_fn(robot, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fn, movable,
                         max_time=attempt_time, **kwargs)
@@ -133,6 +139,8 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
         #     path, node_path = path_data
 
         # input("Path found, press enter to start smoothing...")
+
+        path_cost = INF
 
         for smooth_attempt in range(smooth_attempts):
             path_smoothed = smooth_path_v4(robot, path, node_path, extend_fn, collision_fn,
@@ -171,8 +179,13 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
             #         if (b.deflection > 0.5):
             #             print("Error! Deflection limit exceeded!")
             #             input("")
-
+            total_ee_path_cost = 0
+            prev_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
             for q in path_smoothed:
+
+                cur_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
+
+                total_ee_path_cost = total_ee_path_cost + np.linalg.norm(cur_ee_pos - prev_ee_pos)
 
                 if(collision_fn(q, True)):
                     # input("collision detected in forward path... Press enter to abandon current path...")
@@ -186,6 +199,7 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
 
                     # input("")
                     flag = 1
+                    total_ee_path_cost = INF
                     break
 
                 # for e, b in enumerate(movable):
@@ -203,12 +217,23 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
         if(flag == 0):
             path = path_smoothed
 
+        path_lengths.append(total_ee_path_cost)
+
         solutions.append(path)
         if compute_path_cost(path, distance_fn) < success_cost:
             break
-    solutions = sorted(solutions, key=lambda path: compute_path_cost(path, distance_fn))
-    print('Solutions ({}): {} | Time: {:.3f}'.format(len(solutions), [(len(path), round(compute_path_cost(
-        path, distance_fn), 3)) for path in solutions], elapsed_time(start_time)))
+
+    min_index = path_lengths.index(min(path_lengths))
+    solutions = [solutions[min_index]]
+
+    print("path lengths: ", path_lengths)
+
+    print("Choosing solution: %d" % (min_index))
+
+
+    # solutions = sorted(solutions, key=lambda path: compute_path_cost(path, distance_fn))
+    # print('Solutions ({}): {} | Time: {:.3f}'.format(len(solutions), [(len(path), round(compute_path_cost(
+    #     path, distance_fn), 3)) for path in solutions], elapsed_time(start_time)))
     return solutions
 
 

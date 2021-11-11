@@ -171,6 +171,13 @@ def compute_path_cost(path, cost_fn=get_distance):
     return sum(cost_fn(*pair) for pair in get_pairs(path))
 
 
+# def compute_path_cost_ee(path):
+#
+#     if path is None:
+#         return INF
+
+
+
 def get_difference(q2, q1):
     return np.array(q2) - np.array(q1)
 

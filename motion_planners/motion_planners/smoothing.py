@@ -81,7 +81,9 @@ def smooth_path_v4(robot, path, node_path, extend_fn, collision_fn, distance_fn=
     # waypoints = waypoints_from_path(path)
     waypoints, waypoints_nodes = waypoints_from_path_v4(path, node_path)
 
+    # iteration = 0
     for iteration in irange(max_iterations):
+    # while iteration < max_iterations:
 
         print("smoothing iteration: ", iteration)
 
@@ -121,10 +123,16 @@ def smooth_path_v4(robot, path, node_path, extend_fn, collision_fn, distance_fn=
         # print("waypoints[i]: ", waypoints[i])
         # print("*******************")
 
-        if(np.linalg.norm(np.array(point1) - np.array(waypoints[i])) < np.linalg.norm(np.array(point1) -                                                                      np.array(waypoints[j]))):
+        if(np.linalg.norm(np.array(point1) - np.array(waypoints[i])) < np.linalg.norm(np.array(point1) - np.array(waypoints[j]))):
             point1_node = waypoints_nodes[i]
         else:
             point1_node = waypoints_nodes[j]
+
+        i, j = segment2
+        if(np.linalg.norm(np.array(point2) - np.array(waypoints[i])) < np.linalg.norm(np.array(point2) - np.array(waypoints[j]))):
+            point2_node = waypoints_nodes[i]
+        else:
+            point2_node = waypoints_nodes[j]
 
         i, _ = segment1
         _, j = segment2
@@ -165,9 +173,11 @@ def smooth_path_v4(robot, path, node_path, extend_fn, collision_fn, distance_fn=
             # time.sleep(0.1)
 
         if(flag == 0):
-            point2_node = TreeNode_v2(point2, state_id=pybullet_tools.utils.save_state())
+            # point2_node = TreeNode_v2(point2, state_id=pybullet_tools.utils.save_state())
             waypoints_nodes = waypoints_nodes[:i+1] + [point1_node, point2_node] + waypoints_nodes[j:]
             waypoints = new_waypoints
+
+        # iteration = iteration + 1
 
     # print("waypoints: ", waypoints)
     # input("Press enter to continue...")
@@ -361,6 +371,9 @@ def smooth_path_with_controls(path, robot, extend_fn, collision_fn, distance_fn=
 
         if all(not collision_fn(q) for q in default_selector(extend_fn(point1, point2))):
             waypoints = new_waypoints
+        else:
+            iteration = iteration - 1
+
     #return waypoints
     return refine_waypoints(waypoints, extend_fn)
 

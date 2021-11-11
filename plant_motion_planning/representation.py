@@ -57,3 +57,27 @@ class TwoAngleRepresentation(PlantJointState):
         # TODO
         self.deflection = deflection
         self.orientation = orientation
+
+
+class CharacterizePlant:
+
+    def __init__(self, base_id, deflection_limit):
+
+        self.bid = base_id
+        self.link_reps = []
+
+        self.deflection_limit = deflection_limit
+
+        for link_idx in range(1, p.getNumJoints(base_id), 2):
+
+            self.link_reps.append(TwoAngleRepresentation(self.bid, link_idx))
+
+    def observe_all(self):
+
+        for b in self.link_reps:
+
+            b.observe()
+            if(b.deflection > self.deflection_limit):
+                return False
+
+        return True

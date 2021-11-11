@@ -28,6 +28,14 @@ def make_plant_responsive(plant_ids = []):
         p.setJointMotorControlArray(plant_id, [0, 1], p.VELOCITY_CONTROL, targetVelocities=[0, 0],
                                 forces=[1e-1, 1e-1])  # make plant responsive to external force
 
+def init_plant_ids(pids):
+
+    global plant_ids
+
+    plant_ids = pids
+
+
+
 def step_sim():
 
     plant_ids = [3, 4, 5, 6, 7]
@@ -75,14 +83,6 @@ def generate_tall_plants(num_plants, positions, floor):
     return plants_ids, plant_representations
 
 
-    # ENV5
-    # set_random_pose(plant1, floor, px = -0.05, py = -0.5)
-    # set_random_pose(plant2, floor, px = 0.15, py = -0.60)
-    # set_random_pose(plant3, floor, px = 0.25, py = -0.70)
-    # # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
-    # set_random_pose(plant4, floor, px = 0.25, py = -0.35)
-    # set_random_pose(plant5, floor, px = 0.40, py = -0.70)
-
 envs = {
     "env0": [
         [0.4, 0.1],
@@ -125,6 +125,13 @@ envs = {
         [0.25, -0.70],
         [0.25, -0.35],
         [0.40, -0.70]
+    ],
+    "env6": [
+        [0.098, -0.10],
+        [-0.005, -0.25],
+        [0.1, -0.32],
+        [0.14, -0.49],
+        [0.4, -0.578]
     ]
 }
 
@@ -152,55 +159,55 @@ def generate_plants(num_plants, positions, floor):
     return plants_ids, plant_representations
 
 
-    # ENV5
-    # set_random_pose(plant1, floor, px = -0.05, py = -0.5)
-    # set_random_pose(plant2, floor, px = 0.15, py = -0.60)
-    # set_random_pose(plant3, floor, px = 0.25, py = -0.70)
-    # # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
-    # set_random_pose(plant4, floor, px = 0.25, py = -0.35)
-    # set_random_pose(plant5, floor, px = 0.40, py = -0.70)
+# ENV5
+# set_random_pose(plant1, floor, px = -0.05, py = -0.5)
+# set_random_pose(plant2, floor, px = 0.15, py = -0.60)
+# set_random_pose(plant3, floor, px = 0.25, py = -0.70)
+# # set_random_pose(plant4, floor, px = 0.25, py = -0.33)
+# set_random_pose(plant4, floor, px = 0.25, py = -0.35)
+# set_random_pose(plant5, floor, px = 0.40, py = -0.70)
 
-envs = {
-    "env0": [
-        [0.4, 0.1],
-        [0.05, -0.15],
-        [-0.25, 0.60],
-        [-0.25, 0.45],
-        [-0.05, 0.50]
-    ],
-    "env1": [
-        [0.4, 0.1],
-        [0.12, -0.15],
-        [-0.25, 0.60],
-        [-0.25, 0.45],
-        [-0.05, 0.50]
-    ],
-    "env2": [
-        [0.15, -0.1],
-        [-0.08, -0.15],
-        [0.25, -0.60],
-        [0.25, -0.43],
-        [-0.05, -0.48]
-    ],
-    "env3": [
-        [0.4, -0.25],
-        [0.25, -0.25],
-        [0.25, -0.60],
-        [0.25, -0.40],
-        [0.40, -0.60]
-    ],
-    "env4": [
-        [0.15, -0.1],
-        [-0.08, -0.15],
-        [0.25, -0.60],
-        [0.25, -0.35],
-        [-0.05, -0.48]
-    ],
-    "env5": [
-        [-0.05, -0.5],
-        [0.15, -0.60],
-        [0.25, -0.70],
-        [0.25, -0.35],
-        [0.40, -0.70]
-    ]
-}
+# envs = {
+#     "env0": [
+#         [0.4, 0.1],
+#         [0.05, -0.15],
+#         [-0.25, 0.60],
+#         [-0.25, 0.45],
+#         [-0.05, 0.50]
+#     ],
+#     "env1": [
+#         [0.4, 0.1],
+#         [0.12, -0.15],
+#         [-0.25, 0.60],
+#         [-0.25, 0.45],
+#         [-0.05, 0.50]
+#     ],
+#     "env2": [
+#         [0.15, -0.1],
+#         [-0.08, -0.15],
+#         [0.25, -0.60],
+#         [0.25, -0.43],
+#         [-0.05, -0.48]
+#     ],
+#     "env3": [
+#         [0.4, -0.25],
+#         [0.25, -0.25],
+#         [0.25, -0.60],
+#         [0.25, -0.40],
+#         [0.40, -0.60]
+#     ],
+#     "env4": [
+#         [0.15, -0.1],
+#         [-0.08, -0.15],
+#         [0.25, -0.60],
+#         [0.25, -0.35],
+#         [-0.05, -0.48]
+#     ],
+#     "env5": [
+#         [-0.05, -0.5],
+#         [0.15, -0.60],
+#         [0.25, -0.70],
+#         [0.25, -0.35],
+#         [0.40, -0.70]
+#     ]
+# }

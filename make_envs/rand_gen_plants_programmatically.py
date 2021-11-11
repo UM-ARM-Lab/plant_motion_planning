@@ -7,6 +7,7 @@ import pybullet as p
 import pybullet_data
 import time
 
+from plant_motion_planning.representation import TwoAngleRepresentation
 from pybullet_tools.utils import connect
 
 p.connect(p.GUI)
@@ -68,7 +69,12 @@ def intersection_with_others(x, y, history, tolerance=0.03):
         return False
 
 
-def create_plant_params():
+def create_plant_params(num_branches_per_stem,
+                        total_num_vert_stems,
+                        total_num_extensions,
+                        stem_half_length = 0.1,
+                        stem_half_width = 0.1,
+                        base_mass = 100000):
 
     global current_index, main_stem_index
 
@@ -86,12 +92,12 @@ def create_plant_params():
     base_ori = [0, 0, 0, 1]
 
     # Base mass - Keep high to simulate a fixed base
-    base_mass = 100000
+    # base_mass = 100000
 
     ###############
 
-    stem_half_length = 0.1
-    stem_half_width = 0.1
+    # stem_half_length = 0.1
+    # stem_half_width = 0.1
     # stem_half_height = np.random.uniform(low=0.3, high=0.7)
 
     link_Masses = []
@@ -111,10 +117,10 @@ def create_plant_params():
 
     exit_out = False
     ith_stem = 0
-    num_branches_per_stem = 0
+    # num_branches_per_stem = 1
     branch_count = 1
-    total_num_vert_stems = 2
-    total_num_extensions = 1
+    # total_num_vert_stems = 1
+    # total_num_extensions = 1
     num_extensions = total_num_extensions + 1
 
     while(exit_out == False):
@@ -198,7 +204,6 @@ def create_plant_params():
                 indices = indices + [main_stem_index, current_index - 1]
 
         elif(vert_stem_count == total_num_vert_stems):
-            # input("chk2")
             exit_out = True
             break
         else:
@@ -235,7 +240,7 @@ def create_plant_params():
         linkPositions = linkPositions + [v1_pos, [0, 0, 0]]
         linkOrientations = linkOrientations + [v1_ori, [0, 0, 0, 1]]
 
-        linkInertialFramePositions = linkInertialFramePositions + [[0, 0, 0], [0, 0, 3]]
+        linkInertialFramePositions = linkInertialFramePositions + [[0, 0, 0], [0, 0, 0]]
         linkInertialFrameOrientations = linkInertialFrameOrientations + [[0, 0, 0, 1], [0, 0, 0, 1]]
 
         jointTypes = jointTypes + [p.JOINT_REVOLUTE, p.JOINT_REVOLUTE]
@@ -245,61 +250,18 @@ def create_plant_params():
                          linkOrientations, linkInertialFramePositions, linkInertialFrameOrientations, indices,
                          jointTypes, axis]
 
+num_branches_per_stem = 2
+total_num_vert_stems = 3
+total_num_extensions = 1
+stem_half_length = 0.1
+stem_half_width = 0.1
 
-
-base_params, stems_params = create_plant_params()
+base_params, stems_params = create_plant_params(num_branches_per_stem, total_num_vert_stems, total_num_extensions)
 
 base_mass, col_base_id, vis_base_id, base_pos, base_ori = base_params
 
 link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, linkOrientations, \
     linkInertialFramePositions, linkInertialFrameOrientations, indices, jointTypes, axis = stems_params
-
-print("base parameters: ", base_params)
-print("stem parameters: ", stems_params)
-
-# input("")
-
-
-## TEMP CHANGE
-
-# base_mass = 100000
-#
-# base_half_width = np.random.uniform(low=0.15, high=0.5)
-# base_half_length = np.random.uniform(low=0.15, high=0.5)
-# base_half_height = np.random.uniform(low=0.15, high=1.0)
-#
-# col_base_id = p.createCollisionShape(
-#     p.GEOM_BOX, halfExtents=[base_half_length, base_half_width, base_half_height]
-# )
-# vis_base_id = -1
-#
-# # Base position and orientation
-# base_pos = [0, 0, base_half_height]
-# base_ori = [0, 0, 0, 1]
-#
-# col_stem1_id, vis_stem1_id = create_stem_element(0.1, 0.1)
-#
-# link_Masses = [0.1, 0.1]
-# # linkCollisionShapeIndices = [col_v1_id, col_stem_id, col_v2_id, col_stem_id1]
-# # linkVisualShapeIndices = [vis_v1_id, vis_stem_id, vis_v2_id, vis_stem_id1]
-# linkCollisionShapeIndices = col_stem1_id
-# linkVisualShapeIndices = vis_stem1_id
-# linkPositions = [[0, 0, base_half_height], [0, 0, 0.0]]
-# linkOrientations = [[0, 0, 0, 1], [0, 0, 0, 1]]
-# linkInertialFramePositions = [[0, 0, 0], [0, 0, 3]]
-# linkInertialFrameOrientations = [[0, 0, 0, 1], [0, 0, 0, 1]]
-# indices = [0, 1]
-# # indices = [-1, 0, 1, 2]
-# # jointTypes = [p.JOINT_REVOLUTE, p.JOINT_REVOLUTE]
-# jointTypes = [p.JOINT_REVOLUTE, p.JOINT_REVOLUTE]
-# axis = [[1, 0, 0], [0, 1, 0]]
-#
-#
-# print("Base params: ", base_mass, col_base_id, vis_base_id, base_pos, base_ori)
-# print("Stem_params: ", link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, linkOrientations,
-#       linkInertialFramePositions, linkInertialFrameOrientations, indices, jointTypes, axis)
-
-##
 
 
 base_id = p.createMultiBody(
@@ -312,55 +274,31 @@ base_id = p.createMultiBody(
 )
 
 
-# print("Number of joints: ", p.getNumJoints(base_id))
-# for j in range(p.getNumJoints(base_id)):
-#     print(p.getJointInfo(base_id, j))
 
-
-# for j in range(-1, p.getNumJoints(base_id)):
-#     p.changeDynamics(base_id, j, jointLowerLimit=-0.5, jointUpperLimit=0.5)
-
-p.changeDynamics(base_id, -1, jointLowerLimit=-0.5, jointUpperLimit=0.5)
-p.changeDynamics(base_id, 0, jointLowerLimit=-0.5, jointUpperLimit=0.5)
-p.changeDynamics(base_id, 1, jointLowerLimit=-0.5, jointUpperLimit=0.5)
-p.changeDynamics(base_id, 2, jointLowerLimit=-0.3, jointUpperLimit=0.3)
-p.changeDynamics(base_id, 3, jointLowerLimit=-0.3, jointUpperLimit=0.3)
+for j in range(-1, p.getNumJoints(base_id)):
+    p.changeDynamics(base_id, j, jointLowerLimit=-1.0, jointUpperLimit=1.0, jointDamping=10, linearDamping=1.3)
 
 joint_list = indices
 p.setJointMotorControlArray(base_id, joint_list, p.VELOCITY_CONTROL, targetVelocities=len(joint_list) * [0],
                             forces=len(joint_list) * [1e-1])  # make plant responsive to external force
 
 
-# p.changeDynamics(base_id, -1, jointDamping=10.0, maxJointVelocity=10.0, jointLowerLimit=-0.5, jointUpperLimit=0.5)
-
-# p.setRealTimeSimulation(1)
-
-# print("Number of joints: ", p.getNumJoints(base_id))
-
-# for j in range(p.getNumJoints(base_id)):
-#     # print(p.getJointInfo(base_id, j))
-#     parent_idx = p.getJointInfo(base_id, j)[-1]
-#
-#     p.changeDynamics(base_id, parent_idx, jointLowerLimit=-1.57, jointUpperLimit=1.57)
-#     # print(p.getJointInfo(base_id, j))
-#     # input("")
-
-# p.changeDynamics(base_id, 0, jointLowerLimit=-0.5, jointUpperLimit=0.5, jointLimitForce=0.0)
-# p.changeDynamics(base_id, 1, jointLowerLimit=-0.5, jointUpperLimit=0.5, jointLimitForce=0.0)
-# p.changeDynamics(base_id, -1, jointLowerLimit=-0.5, jointUpperLimit=0.5)
-# p.changeDynamics(base_id, 1, jointLowerLimit=-0.5, jointUpperLimit=0.5)
-# p.changeDynamics(base_id, 0, jointLowerLimit=-0.5, jointUpperLimit=0.5)
-# p.changeDynamics(base_id, 2, jointLowerLimit=-0.5, jointUpperLimit=0.5)
-
-# input("")
-
-time_limit = 10
+time_limit = 20
 time_elapsed = time.time()
 
-# log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
-#                 fileName="../../simulation_recordings/misc/plant_gone_crazy1.mp4")
-
 p.setGravity(0, 0, -10)
+
+prev_plant_rot_joint_displacement_y = (len(joint_list) // 2) * [0]
+prev_plant_rot_joint_displacement_x = (len(joint_list) // 2) * [0]
+
+print("Number of joints: ", p.getNumJoints(base_id))
+
+eps = 0.1
+
+# log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
+#                              fileName="../../simulation_recordings/multi_branch_plants/plant1.mp4")
+
+base_rep = TwoAngleRepresentation(base_id, 1)
 
 while(1):
 
@@ -368,25 +306,78 @@ while(1):
     # if(time.time() - time_elapsed > time_limit):
     #     break
 
-    kp = 2000
+    kp = 2600
+    kd = 10
 
-    # for joint_idx in range(0, len(joint_list), 2):
+
+    # External torque added by considering joint indices in the opposite direction
+    for i, joint_idx in enumerate(range(len(joint_list)-1,0, -2)):
+
+        plant_rot_joint_displacement_y, _, plant_hinge_x_reac, _ = p.getJointState(base_id, joint_idx)
+        plant_rot_joint_displacement_x, _, plant_hinge_y_reac, _ = p.getJointState(base_id, joint_idx - 1)
+
+        diffy = plant_rot_joint_displacement_y - prev_plant_rot_joint_displacement_y[i]
+        diffx = plant_rot_joint_displacement_x - prev_plant_rot_joint_displacement_x[i]
+
+        prev_plant_rot_joint_displacement_y[i], prev_plant_rot_joint_displacement_x[i] = plant_rot_joint_displacement_y, \
+                                                                                         plant_rot_joint_displacement_x
+
+        p.applyExternalTorque(base_id, linkIndex=joint_idx,
+                              torqueObj=[-kp * plant_rot_joint_displacement_x + kd * diffx,
+                                         -kp * plant_rot_joint_displacement_y + kd * diffy, 0],
+                              flags=p.LINK_FRAME)
+
+        # kp = kp - 100
+
+    # for i, joint_idx in enumerate(range(len(joint_list)-1,0, -2)):
+    #
+    #     while(True):
+    #         plant_rot_joint_displacement_y, _, plant_hinge_x_reac, _ = p.getJointState(base_id, joint_idx)
+    #         plant_rot_joint_displacement_x, _, plant_hinge_y_reac, _ = p.getJointState(base_id, joint_idx - 1)
+    #
+    #         diffy = plant_rot_joint_displacement_y - prev_plant_rot_joint_displacement_y[i]
+    #         diffx = plant_rot_joint_displacement_x - prev_plant_rot_joint_displacement_x[i]
+    #
+    #         prev_plant_rot_joint_displacement_y[i], prev_plant_rot_joint_displacement_x[i] = plant_rot_joint_displacement_y, \
+    #                                                                                          plant_rot_joint_displacement_x
+    #
+    #         p.applyExternalTorque(base_id, linkIndex=joint_idx,
+    #                               torqueObj=[-kp * plant_rot_joint_displacement_x + kd * diffx,
+    #                                          -kp * plant_rot_joint_displacement_y + kd * diffy, 0],
+    #                               flags=p.LINK_FRAME)
+    #
+    #         if(plant_rot_joint_displacement_y < eps and plant_rot_joint_displacement_x < eps):
+    #             break
+
+    # for i, joint_idx in enumerate(range(0, len(joint_list), 2)):
     #
     #     plant_rot_joint_displacement_x, _, plant_hinge_x_reac, _ = p.getJointState(base_id, joint_idx)
     #     plant_rot_joint_displacement_y, _, plant_hinge_y_reac, _ = p.getJointState(base_id, joint_idx + 1)
     #
-    #     p.applyExternalTorque(base_id, linkIndex=joint_idx + 1,
-    #                           torqueObj=[-kp * plant_rot_joint_displacement_x, -kp * plant_rot_joint_displacement_y, 0],
-    #                           flags=p.WORLD_FRAME)
+    #     diffy = plant_rot_joint_displacement_y - prev_plant_rot_joint_displacement_y[i]
+    #     diffx = plant_rot_joint_displacement_x - prev_plant_rot_joint_displacement_x[i]
     #
-    #     kp = kp - 200
+    #     prev_plant_rot_joint_displacement_y[i], prev_plant_rot_joint_displacement_x[i] = plant_rot_joint_displacement_y, \
+    #                                                                                   plant_rot_joint_displacement_x
+    #
+    #     p.applyExternalTorque(base_id, linkIndex=joint_idx + 1,
+    #                           torqueObj=[-kp * plant_rot_joint_displacement_x + kd * diffx,
+    #                                      -kp * plant_rot_joint_displacement_y + kd * diffy, 0],
+    #                           flags=p.LINK_FRAME)
 
-    plant_rot_joint_displacement_x, _, plant_hinge_x_reac, _ = p.getJointState(base_id, 0)
-    plant_rot_joint_displacement_y, _, plant_hinge_y_reac, _ = p.getJointState(base_id, 0 + 1)
+    #     kp = kp - 300
+    #     if(kp < 0):
+    #         kp = 0
 
-    p.applyExternalTorque(base_id, linkIndex=0 + 1,
-                          torqueObj=[-kp * plant_rot_joint_displacement_x, -kp * plant_rot_joint_displacement_y, 0],
-                          flags=p.WORLD_FRAME)
+    # plant_rot_joint_displacement_x, _, plant_hinge_x_reac, _ = p.getJointState(base_id, 0)
+    # plant_rot_joint_displacement_y, _, plant_hinge_y_reac, _ = p.getJointState(base_id, 0 + 1)
+    #
+    # p.applyExternalTorque(base_id, linkIndex=0 + 1,
+    #                       torqueObj=[-kp * plant_rot_joint_displacement_x, -kp * plant_rot_joint_displacement_y, 0],
+    #                       flags=p.WORLD_FRAME)
+
+    base_rep.observe()
+    print("base deflection: ", base_rep.deflection)
 
     p.stepSimulation()
     time.sleep(1/240.0)

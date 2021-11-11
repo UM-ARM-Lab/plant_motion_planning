@@ -18,9 +18,20 @@ from plant_motion_planning import representation
 from .utils import set_random_poses, make_plant_responsive, set_random_pose, generate_plants, envs, step_sim, \
     generate_tall_plants
 
+import argparse
+
+parser = argparse.ArgumentParser(description='')
+parser.add_argument("--video_filename", type=str, help="File name of video file to record planning with full path",
+                    default=None)
+parser.add_argument("--env", type=str, help="Name of environment to be used", default=None)
+
+args = parser.parse_args()
+
+if(args.env == None):
+    print("Error!! Environment must be provided")
+    exit()
+
 from datetime import datetime
-
-
 
 def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g, teleport=False):
 
@@ -146,8 +157,8 @@ goal_conf = (-1.3871757013351371, 1.6063773991870438, 2.152853076950719, -1.0638
 
 def main(display='execute'): # control | execute | step
 
-    connect(use_gui=True,width=1000, height=700)
-    # connect(use_gui=True,width=1920, height=1080)
+    # connect(use_gui=True,width=1000, height=700)
+    connect(use_gui=True,width=1920, height=1080)
     # connect(use_gui=True)
     # p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1)
     disable_real_time()
@@ -164,7 +175,7 @@ def main(display='execute'): # control | execute | step
     set_pose(block, Pose(Point(x=0.4,y=-0.4,z=0.45),Euler(yaw=1.57)))
 
     # Get plant positions given the kind of placement of plants required
-    plant_positions = envs["env1"]
+    plant_positions = envs[args.env]
 
     # Generate plants given positions
     plant_ids, plant_representations = generate_tall_plants(num_plants=5, positions=plant_positions, floor=floor)
@@ -196,8 +207,10 @@ def main(display='execute'): # control | execute | step
     update_state()
     # wait_if_gui('{}?'.format(display))
 
-    log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
-                                 fileName="../testing_data/angle_constraint_with_controls/video_recordings/env1/trial1.mp4")
+    if(args.video_filename != None):
+        # log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
+        #                              fileName="../testing_data/angle_constraint_with_controls/video_recordings/env1/trial1.mp4")
+        log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4, fileName=args.video_filename)
 
     if display == 'control':
         enable_gravity()
@@ -218,7 +231,8 @@ def main(display='execute'): # control | execute | step
 
     print('Quit?')
     # wait_if_gui()
-    # p.stopStateLogging(log_id)
+    if(args.video_filename != None):
+        p.stopStateLogging(log_id)
     disconnect()
 
 if __name__ == '__main__':

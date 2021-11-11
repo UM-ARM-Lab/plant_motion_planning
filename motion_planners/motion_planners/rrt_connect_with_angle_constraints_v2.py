@@ -391,6 +391,8 @@ def rrt_connect_v4(robot, start, start_state_id, goal, distance_fn, sample_fn, e
 
     swap = True
 
+    max_iterations = 2000
+
     for iteration in irange(max_iterations):
 
         # pyb_tools_utils.step_simulation()
@@ -649,7 +651,7 @@ def birrt_v4(robot, start_state_id, start, goal, distance_fn, sample_fn, extend_
     # return path
 
     solutions = random_restarts_v4(rrt_connect_v4, robot, start_state_id, start, goal, distance_fn, sample_fn,
-                                   extend_fn, collision_fn, movable, max_solutions=1, **kwargs)
+                                   extend_fn, collision_fn, movable, max_solutions=2, **kwargs)
 
     if not solutions:
         return None
