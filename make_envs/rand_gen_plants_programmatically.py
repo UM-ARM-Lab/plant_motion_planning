@@ -7,7 +7,7 @@ import pybullet as p
 import pybullet_data
 import time
 
-from plant_motion_planning.representation import TwoAngleRepresentation
+from plant_motion_planning.representation import TwoAngleRepresentation, TwoAngleRepresentation_mod, CharacterizePlant
 from pybullet_tools.utils import connect
 
 p.connect(p.GUI)
@@ -69,6 +69,9 @@ def intersection_with_others(x, y, history, tolerance=0.03):
         return False
 
 
+base_points = {}
+main_stem_indices = []
+
 def create_plant_params(num_branches_per_stem,
                         total_num_vert_stems,
                         total_num_extensions,
@@ -81,6 +84,8 @@ def create_plant_params(num_branches_per_stem,
     base_half_width = np.random.uniform(low=0.15,high=0.5)
     base_half_length = np.random.uniform(low=0.15,high=0.5)
     base_half_height = np.random.uniform(low=0.15,high=1.0)
+    print("base height: ", 2 * base_half_height)
+
 
     col_base_id = p.createCollisionShape(
         p.GEOM_BOX, halfExtents=[base_half_width, base_half_length, base_half_height]
@@ -137,6 +142,9 @@ def create_plant_params(num_branches_per_stem,
             current_index = current_index + 2
             indices = indices + [main_stem_index, current_index - 1]
             main_stem_index = current_index
+            main_stem_indices.append(main_stem_index)
+
+            base_points[current_index-1] = [v1_pos[0], v1_pos[1], 2 * v1_pos[2]]
 
         elif(branch_count <= num_branches_per_stem):
 
@@ -203,6 +211,9 @@ def create_plant_params(num_branches_per_stem,
                 current_index = current_index + 2
                 indices = indices + [main_stem_index, current_index - 1]
 
+
+            base_points[current_index-1] = v1_pos
+
         elif(vert_stem_count == total_num_vert_stems):
             exit_out = True
             break
@@ -227,6 +238,9 @@ def create_plant_params(num_branches_per_stem,
             current_index = current_index + 2
             indices = indices + [main_stem_index, current_index - 1]
             main_stem_index = current_index
+            main_stem_indices.append(main_stem_index)
+
+            base_points[current_index-1] = v1_pos
 
 
         link_mass = [0, 10]
@@ -240,18 +254,21 @@ def create_plant_params(num_branches_per_stem,
         linkPositions = linkPositions + [v1_pos, [0, 0, 0]]
         linkOrientations = linkOrientations + [v1_ori, [0, 0, 0, 1]]
 
-        linkInertialFramePositions = linkInertialFramePositions + [[0, 0, 0], [0, 0, 0]]
+        linkInertialFramePositions = linkInertialFramePositions + [[0, 0, 0], [0, 0, 1]]
         linkInertialFrameOrientations = linkInertialFrameOrientations + [[0, 0, 0, 1], [0, 0, 0, 1]]
 
         jointTypes = jointTypes + [p.JOINT_REVOLUTE, p.JOINT_REVOLUTE]
         axis = axis + [[1, 0, 0], [0, 1, 0]]
 
+
     return [base_mass, col_base_id, vis_base_id, base_pos, base_ori], [link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions,
                          linkOrientations, linkInertialFramePositions, linkInertialFrameOrientations, indices,
                          jointTypes, axis]
 
-num_branches_per_stem = 2
-total_num_vert_stems = 3
+
+
+num_branches_per_stem = 1
+total_num_vert_stems = 2
 total_num_extensions = 1
 stem_half_length = 0.1
 stem_half_width = 0.1
@@ -276,7 +293,7 @@ base_id = p.createMultiBody(
 
 
 for j in range(-1, p.getNumJoints(base_id)):
-    p.changeDynamics(base_id, j, jointLowerLimit=-1.0, jointUpperLimit=1.0, jointDamping=10, linearDamping=1.3)
+    p.changeDynamics(base_id, j, jointLowerLimit=-1.5, jointUpperLimit=1.5, jointDamping=10, linearDamping=2.5)
 
 joint_list = indices
 p.setJointMotorControlArray(base_id, joint_list, p.VELOCITY_CONTROL, targetVelocities=len(joint_list) * [0],
@@ -298,7 +315,8 @@ eps = 0.1
 # log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4,
 #                              fileName="../../simulation_recordings/multi_branch_plants/plant1.mp4")
 
-base_rep = TwoAngleRepresentation(base_id, 1)
+# base_rep = TwoAngleRepresentation_mod(base_id, 1, base_points[1])
+base_rep = CharacterizePlant(base_id, base_points, main_stem_indices)
 
 while(1):
 
@@ -306,8 +324,8 @@ while(1):
     # if(time.time() - time_elapsed > time_limit):
     #     break
 
-    kp = 2600
-    kd = 10
+    kp = 3000
+    kd = 50
 
 
     # External torque added by considering joint indices in the opposite direction
@@ -376,8 +394,9 @@ while(1):
     #                       torqueObj=[-kp * plant_rot_joint_displacement_x, -kp * plant_rot_joint_displacement_y, 0],
     #                       flags=p.WORLD_FRAME)
 
-    base_rep.observe()
-    print("base deflection: ", base_rep.deflection)
+    # base_rep.observe()
+    # print("base deflection: ", base_rep.deflection)
+    base_rep.observe_all()
 
     p.stepSimulation()
     time.sleep(1/240.0)

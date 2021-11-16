@@ -35,18 +35,19 @@ def init_plant_ids(pids):
     plant_ids = pids
 
 
+plants_ids = []
 
 def step_sim():
 
-    plant_ids = [3, 4, 5, 6, 7]
+    # plant_ids = [3, 4, 5, 6, 7]
 
-    # global plant_ids
+    global plants_ids
 
-    if(len(plant_ids) == 0):
+    if(len(plants_ids) == 0):
         print("length of plant_ids must be at least 1")
         exit()
 
-    for pid in plant_ids:
+    for pid in plants_ids:
         plant_rot_joint_displacement_y, _, plant_hinge_y_reac, _ = pybullet.getJointState(pid, 0)
         plant_rot_joint_displacement_x, _, plant_hinge_x_reac, _ = pybullet.getJointState(pid, 1)
         pybullet.applyExternalTorque(pid, linkIndex=1,
@@ -62,13 +63,13 @@ def step_sim():
 
 def generate_tall_plants(num_plants, positions, floor):
 
-    # global plant_ids
+    global plants_ids
 
     if(len(positions) != num_plants):
         print("Error! Make sure number of plants equals number of positions!")
         exit()
 
-    plants_ids = []
+    # plants_ids = []
     plant_representations = []
 
     for i in range(num_plants):
@@ -132,6 +133,28 @@ envs = {
         [0.1, -0.32],
         [0.14, -0.49],
         [0.4, -0.578]
+    ],
+    "env7": [
+        [0.15, -0.10],
+        [-0.10, -0.10],
+        [0.15, -0.32],
+        [-0.10, -0.32],
+        [-0.1, -0.54],
+        [0.15, -0.76],
+        [-0.1, -0.76],
+        [0.40, -0.10],
+        [0.15, -0.54],
+        [0.40, -0.32],
+        [0.47, -0.54],
+        [0.40, -0.76],
+        [0.65, -0.10],
+        [0.65, -0.32],
+        [0.65, -0.54],
+        [0.65, -0.76],
+        [-0.35, -0.10],
+        [-0.35, -0.32],
+        # [-0.35, -0.54],
+        # [-0.35, -0.76]
     ]
 }
 

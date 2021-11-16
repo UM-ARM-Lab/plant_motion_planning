@@ -24,11 +24,12 @@ parser = argparse.ArgumentParser(description='')
 parser.add_argument("--video_filename", type=str, help="File name of video file to record planning with full path",
                     default=None)
 parser.add_argument("--env", type=str, help="Name of environment to be used", default=None)
+parser.add_argument("--deflection_limit", type=float, help="Maximum amount of deflection to be permitted", default=None)
 
 args = parser.parse_args()
 
-if(args.env == None):
-    print("Error!! Environment must be provided")
+if(args.env == None or args.deflection_limit == None):
+    print("Error!! All data must be provided")
     exit()
 
 from datetime import datetime
@@ -178,14 +179,14 @@ def main(display='execute'): # control | execute | step
     plant_positions = envs[args.env]
 
     # Generate plants given positions
-    plant_ids, plant_representations = generate_tall_plants(num_plants=5, positions=plant_positions, floor=floor)
+    plant_ids, plant_representations = generate_tall_plants(num_plants=len(plant_positions), positions=plant_positions, floor=floor)
 
     dump_world()
 
     conf0 = BodyConf(robot, configuration=init_conf)
     conf0.assign()
 
-    deflection_limit = 0.50
+    deflection_limit = args.deflection_limit
 
     saved_world = p.saveState()
 

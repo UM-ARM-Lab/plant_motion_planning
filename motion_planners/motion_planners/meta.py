@@ -115,7 +115,7 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
     #     solutions.append(path)
 
     smooth_attempts = 5
-    max_iterations_per_smoothing = 20
+    max_iterations_per_smoothing = 100
 
     # for attempt in irange(restarts + 1):
 

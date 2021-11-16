@@ -15,7 +15,7 @@ from pybullet_tools.utils import WorldSaver, enable_gravity, connect, dump_world
 import pybullet as p
 import numpy as np
 from plant_motion_planning import representation
-from .utils import set_random_poses, make_plant_responsive, set_random_pose
+from .utils import set_random_poses, make_plant_responsive, set_random_pose, generate_tall_plants, envs
 
 init_conf = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 goal_conf = (-1.3871757013351371, 1.6063773991870438, 2.152853076950719, -1.0638334445672613, -0.1398096715085235,
@@ -43,32 +43,104 @@ def main(display='execute'): # control | execute | step
     # set_pose(block, Pose(Point(x=-0.4, y=0.2, z=stable_z(block, floor))))
     set_pose(block, Pose(Point(x=0.4,y=-0.4,z=0.45),Euler(yaw=1.57)))
 
+    positions = [[0.15, -0.10],
+    [-0.10, -0.10],
+    [0.15, -0.32],
+    [-0.10, -0.32],
+    [-0.1, -0.54],
+    [0.15, -0.76],
+    [-0.1, -0.76],
+    [0.40, -0.10],
+    [0.15, -0.54],
+    [0.40, -0.32],
+    [0.47, -0.54],
+    [0.40, -0.76],
+    [0.55, -0.10],
+    [0.55, -0.32],
+    [0.55, -0.54],
+    [0.55, -0.76],
+    [-0.25, -0.10],
+    [-0.25, -0.32],
+    [-0.25, -0.54],
+    [-0.25, -0.76]]
+
+    positions = envs["env7"]
+    pids, movable = generate_tall_plants(20, positions, floor)
+
+
     ## Creating and placing a plant as an obstacle
     # plant = create_box(0.05,0.05,1,color=BROWN)
     # plant = load_model('my_scripts/rigid_stem_rigid_branch.urdf', fixed_base=True)
-    plant1 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
-    plant2 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
-    plant3 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
-    plant4 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
-    plant5 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant1 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant2 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant3 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant4 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant5 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant6 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant7 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant8 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant9 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant10 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant11 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant12 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant13 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant14 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant15 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant16 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant17 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant18 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant19 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
+    # plant20 = load_model('urdf/tall_plant_multi_dof2.urdf', fixed_base=True)
 
 
-    pids = [plant1, plant2, plant3, plant4, plant5]
+    # pids = [plant1, plant2, plant3, plant4, plant5, plant6, plant7, plant8, plant9, plant10, plant11, plant12, plant13,
+    #         plant14, plant15, plant16, plant17, plant18, plant19, plant20]
+    # pids = [plant1, plant2, plant3, plant4, plant5, plant6, plant7, plant8, plant11]
 
     # ENV6
-    set_random_pose(plant1, floor, px = 0.098, py = -0.10)
-    set_random_pose(plant2, floor, px = -0.005, py = -0.25)
-    set_random_pose(plant3, floor, px = 0.1, py = -0.32)
-    set_random_pose(plant4, floor, px = 0.14, py = -0.49)
-    set_random_pose(plant5, floor, px = 0.4, py = -0.578)
+    # set_random_pose(plant1, floor, px = 0.15, py = -0.10)
+    # set_random_pose(plant2, floor, px = -0.10, py = -0.10)
+    # set_random_pose(plant3, floor, px = 0.15, py = -0.32)
+    # set_random_pose(plant4, floor, px = -0.10, py = -0.32)
+    # set_random_pose(plant6, floor, px = -0.1, py = -0.54)
+    # set_random_pose(plant7, floor, px = 0.15, py = -0.76)
+    # set_random_pose(plant8, floor, px = -0.1, py = -0.76)
+    # set_random_pose(plant9, floor, px = 0.40, py = -0.10)
+    # set_random_pose(plant5, floor, px = 0.15, py = -0.54)
+    # set_random_pose(plant10, floor, px = 0.40, py = -0.32)
+    # set_random_pose(plant11, floor, px = 0.47, py = -0.54)
+    # set_random_pose(plant12, floor, px = 0.40, py = -0.76)
+    # set_random_pose(plant13, floor, px = 0.65, py = -0.10)
+    # set_random_pose(plant14, floor, px = 0.65, py = -0.32)
+    # set_random_pose(plant15, floor, px = 0.65, py = -0.54)
+    # set_random_pose(plant16, floor, px = 0.65, py = -0.76)
+    # set_random_pose(plant17, floor, px = -0.35, py = -0.10)
+    # set_random_pose(plant18, floor, px = -0.35, py = -0.32)
+    # set_random_pose(plant19, floor, px = -0.35, py = -0.54)
+    # set_random_pose(plant20, floor, px = -0.35, py = -0.76)
 
-    plant1_2angle_rep = representation.TwoAngleRepresentation(plant1, 1)
-    plant2_2angle_rep = representation.TwoAngleRepresentation(plant2, 1)
-    plant3_2angle_rep = representation.TwoAngleRepresentation(plant3, 1)
-    plant4_2angle_rep = representation.TwoAngleRepresentation(plant4, 1)
-    plant5_2angle_rep = representation.TwoAngleRepresentation(plant5, 1)
+    # plant1_2angle_rep = representation.TwoAngleRepresentation(plant1, 1)
+    # plant2_2angle_rep = representation.TwoAngleRepresentation(plant2, 1)
+    # plant3_2angle_rep = representation.TwoAngleRepresentation(plant3, 1)
+    # plant4_2angle_rep = representation.TwoAngleRepresentation(plant4, 1)
+    # plant5_2angle_rep = representation.TwoAngleRepresentation(plant5, 1)
+    # plant6_2angle_rep = representation.TwoAngleRepresentation(plant6, 1)
+    # plant7_2angle_rep = representation.TwoAngleRepresentation(plant7, 1)
+    # plant8_2angle_rep = representation.TwoAngleRepresentation(plant8, 1)
+    # plant9_2angle_rep = representation.TwoAngleRepresentation(plant9, 1)
+    # plant10_2angle_rep = representation.TwoAngleRepresentation(plant10, 1)
+    # plant11_2angle_rep = representation.TwoAngleRepresentation(plant11, 1)
+    # plant12_2angle_rep = representation.TwoAngleRepresentation(plant12, 1)
+    # plant13_2angle_rep = representation.TwoAngleRepresentation(plant13, 1)
+    # plant14_2angle_rep = representation.TwoAngleRepresentation(plant14, 1)
+    # plant15_2angle_rep = representation.TwoAngleRepresentation(plant15, 1)
+    # plant16_2angle_rep = representation.TwoAngleRepresentation(plant16, 1)
+    # plant17_2angle_rep = representation.TwoAngleRepresentation(plant17, 1)
+    # plant18_2angle_rep = representation.TwoAngleRepresentation(plant18, 1)
+    # plant19_2angle_rep = representation.TwoAngleRepresentation(plant19, 1)
+    # plant20_2angle_rep = representation.TwoAngleRepresentation(plant20, 1)
 
-    make_plant_responsive([plant1, plant2, plant3, plant4, plant5])
+    make_plant_responsive(pids)
     # make_plant_responsive([plant1, plant2, plant3, plant4])
 
     dump_world()
@@ -81,7 +153,10 @@ def main(display='execute'): # control | execute | step
 
 
     flag = 0
-    movable = [plant1_2angle_rep, plant2_2angle_rep, plant3_2angle_rep, plant4_2angle_rep, plant5_2angle_rep]
+    # movable = [plant1_2angle_rep, plant2_2angle_rep, plant3_2angle_rep, plant4_2angle_rep, plant5_2angle_rep,
+    #            plant6_2angle_rep, plant7_2angle_rep, plant8_2angle_rep, plant9_2angle_rep, plant10_2angle_rep,
+    #            plant11_2angle_rep, plant12_2angle_rep, plant13_2angle_rep, plant14_2angle_rep, plant15_2angle_rep,
+    #            plant16_2angle_rep, plant17_2angle_rep, plant18_2angle_rep, plant19_2angle_rep, plant20_2angle_rep]
     # movable = [plant1_2angle_rep, plant2_2angle_rep, plant3_2angle_rep, plant4_2angle_rep] #, plant5_2angle_rep]
 
 
