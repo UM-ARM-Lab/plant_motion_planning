@@ -189,7 +189,6 @@ class CharacterizePlant:
             self.link_reps.append(TwoAngleRepresentation_mod(self.bid, link_idx, base_points[link_idx]))
 
 
-
     def observe_all(self):
 
         last_angle = 0
@@ -207,7 +206,8 @@ class CharacterizePlant:
             if(b.deflection < 0):
                 b.deflection = 0
 
-            print("Deflection of link %d: %f" % (e, b.deflection))
+            if(e == 3):
+                print("Deflection of link %d: %f" % (e, b.deflection))
 
             if((2 * e + 2) in self.main_stem_indices):
             # if(True):

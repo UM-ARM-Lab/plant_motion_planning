@@ -293,7 +293,7 @@ base_id = p.createMultiBody(
 
 
 for j in range(-1, p.getNumJoints(base_id)):
-    p.changeDynamics(base_id, j, jointLowerLimit=-1.5, jointUpperLimit=1.5, jointDamping=10, linearDamping=2.5)
+    p.changeDynamics(base_id, j, jointLowerLimit=-1.5, jointUpperLimit=1.5, jointDamping=10, linearDamping=1.5)
 
 joint_list = indices
 p.setJointMotorControlArray(base_id, joint_list, p.VELOCITY_CONTROL, targetVelocities=len(joint_list) * [0],

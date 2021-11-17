@@ -43,29 +43,40 @@ def main(display='execute'): # control | execute | step
     # set_pose(block, Pose(Point(x=-0.4, y=0.2, z=stable_z(block, floor))))
     set_pose(block, Pose(Point(x=0.4,y=-0.4,z=0.45),Euler(yaw=1.57)))
 
-    positions = [[0.15, -0.10],
+    positions = [
+    [0.15, -0.10],
+    [0.15, -0.20],
     [-0.10, -0.10],
+    [-0.10, -0.20],
     [0.15, -0.32],
     [-0.10, -0.32],
+    [-0.10, -0.42],
     [-0.1, -0.54],
     [0.15, -0.76],
+    [0.15, -0.66],
     [-0.1, -0.76],
+    [-0.1, -0.66],
     [0.40, -0.10],
+    [0.40, -0.20],
     [0.15, -0.54],
     [0.40, -0.32],
     [0.47, -0.54],
     [0.40, -0.76],
+    [0.40, -0.66],
     [0.55, -0.10],
+    [0.55, -0.20],
     [0.55, -0.32],
+    [0.55, -0.42],
     [0.55, -0.54],
     [0.55, -0.76],
+    [0.55, -0.66],
     [-0.25, -0.10],
+    [-0.25, -0.20],
     [-0.25, -0.32],
-    [-0.25, -0.54],
-    [-0.25, -0.76]]
+    ]
 
-    positions = envs["env7"]
-    pids, movable = generate_tall_plants(20, positions, floor)
+    # positions = envs["env7"]
+    pids, movable = generate_tall_plants(len(positions), positions, floor)
 
 
     ## Creating and placing a plant as an obstacle
