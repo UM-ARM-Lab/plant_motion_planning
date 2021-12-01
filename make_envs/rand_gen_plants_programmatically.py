@@ -7,7 +7,8 @@ import pybullet as p
 import pybullet_data
 import time
 
-from plant_motion_planning.representation import TwoAngleRepresentation, TwoAngleRepresentation_mod, CharacterizePlant
+from plant_motion_planning.representation import TwoAngleRepresentation, TwoAngleRepresentation_mod, CharacterizePlant, \
+    CharacterizePlant2
 from pybullet_tools.utils import connect
 
 p.connect(p.GUI)
@@ -34,7 +35,7 @@ stem_half_height = {}
 
 def create_stem_element(stem_half_length, stem_half_width):
 
-    stem_half_height[current_index] = np.random.uniform(low=0.3, high=0.7)
+    stem_half_height[current_index] = np.random.uniform(low=0.7, high=1.0)
 
     col_stem_id = p.createCollisionShape(
         p.GEOM_BOX, halfExtents=[stem_half_length, stem_half_width, stem_half_height[current_index]],
@@ -71,6 +72,7 @@ def intersection_with_others(x, y, history, tolerance=0.03):
 
 base_points = {}
 main_stem_indices = []
+link_parent_indices = {}
 
 def create_plant_params(num_branches_per_stem,
                         total_num_vert_stems,
@@ -146,11 +148,13 @@ def create_plant_params(num_branches_per_stem,
 
             base_points[current_index-1] = [v1_pos[0], v1_pos[1], 2 * v1_pos[2]]
 
+            link_parent_indices[current_index-1] = -1
+
         elif(branch_count <= num_branches_per_stem):
 
 
             if(num_extensions <= total_num_extensions):
-                v1_pos = [0, 0, stem_base_spacing + (2 * stem_half_height[current_index])]
+                v1_pos = [base_pos[0], base_pos[1], stem_base_spacing + (2 * stem_half_height[current_index])]
 
                 if(random.random() < 0.5):
                     roll = np.random.uniform(low=-0.5,high=0.5)
@@ -163,6 +167,8 @@ def create_plant_params(num_branches_per_stem,
 
                 indices = indices + [current_index, current_index + 1]
                 current_index = current_index + 2
+
+                link_parent_indices[current_index-1] = current_index - 2 - 1
 
                 if(num_extensions == total_num_extensions):
                     branch_count = branch_count + 1
@@ -211,6 +217,8 @@ def create_plant_params(num_branches_per_stem,
                 current_index = current_index + 2
                 indices = indices + [main_stem_index, current_index - 1]
 
+                link_parent_indices[current_index-1] = main_stem_index - 1
+
 
             base_points[current_index-1] = v1_pos
 
@@ -223,7 +231,7 @@ def create_plant_params(num_branches_per_stem,
             branch_count = 1
             history = []
 
-            v1_pos = [0, 0, stem_base_spacing + (2 * stem_half_height[main_stem_index])]
+            v1_pos = [base_pos[0], base_pos[1], stem_base_spacing + (2 * stem_half_height[main_stem_index])]
 
             if(random.random() < 0.5):
                 pitch = np.random.uniform(low=-0.4, high=0.4)
@@ -237,6 +245,8 @@ def create_plant_params(num_branches_per_stem,
 
             current_index = current_index + 2
             indices = indices + [main_stem_index, current_index - 1]
+            link_parent_indices[current_index-1] = main_stem_index - 1
+
             main_stem_index = current_index
             main_stem_indices.append(main_stem_index)
 
@@ -267,8 +277,8 @@ def create_plant_params(num_branches_per_stem,
 
 
 
-num_branches_per_stem = 1
-total_num_vert_stems = 2
+num_branches_per_stem = 2
+total_num_vert_stems = 1
 total_num_extensions = 1
 stem_half_length = 0.1
 stem_half_width = 0.1
@@ -316,7 +326,12 @@ eps = 0.1
 #                              fileName="../../simulation_recordings/multi_branch_plants/plant1.mp4")
 
 # base_rep = TwoAngleRepresentation_mod(base_id, 1, base_points[1])
-base_rep = CharacterizePlant(base_id, base_points, main_stem_indices)
+
+# print(joint_list)
+# print(link_parent_indices)
+# input("")
+
+base_rep = CharacterizePlant2(base_id, base_points, main_stem_indices, link_parent_indices)
 
 while(1):
 
@@ -397,6 +412,7 @@ while(1):
     # base_rep.observe()
     # print("base deflection: ", base_rep.deflection)
     base_rep.observe_all()
+    print(base_rep.deflections)
 
     p.stepSimulation()
     time.sleep(1/240.0)

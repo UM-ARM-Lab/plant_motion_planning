@@ -16,7 +16,8 @@ from .utils import get_pose, set_pose, get_movable_joints, \
     get_contact_points, CLIENT, pairwise_contact, plan_joint_motion_with_angle_contraints, \
     plan_joint_motion2, add_text, plan_joint_motion_with_angle_contraints_v2, \
     plan_joint_motion_with_angle_contraints_v3, plan_joint_motion_with_angle_contraints_v4, \
-    plan_joint_motion_with_angle_constraints_v5, plan_joint_motion_with_controls
+    plan_joint_motion_with_angle_constraints_v5, plan_joint_motion_with_controls, \
+    plan_joint_motion_with_angle_contraints_v6
 from plant_motion_planning.utils import compute_total_cost, compute_path_cost
 
 # TODO: deprecate
@@ -107,7 +108,7 @@ class BodyConf(object):
         pybullet.setJointMotorControlArray(self.body, self.joints, pybullet.POSITION_CONTROL, self.configuration,
                                            positionGains=7 * [0.01])
         for t in range(10):
-            s_utils.step_sim()
+            s_utils.step_sim_v2()
 
         return self.configuration
 
@@ -148,6 +149,27 @@ class BodyPath(object):
 
             for t in range(11):
                 s_utils.step_sim()
+
+            for grasp in self.attachments:
+                grasp.assign()
+
+            yield i
+
+
+    def iterator_with_control_v2(self):
+        # TODO: compute and cache these
+        # TODO: compute bounding boxes as well
+
+        position_gains = 7 * [0.01]
+
+        for i, configuration in enumerate(self.path):
+
+            # set_joint_positions(self.body, self.joints, configuration)
+            pybullet.setJointMotorControlArray(self.body, self.joints, pybullet.POSITION_CONTROL, configuration,
+                                               positionGains=position_gains)
+
+            for t in range(11):
+                s_utils.step_sim_v2()
 
             for grasp in self.attachments:
                 grasp.assign()
@@ -408,6 +430,103 @@ class Command(object):
 
                     #time.sleep(time_step)
                     # wait_for_duration(time_step)
+                # wait_if_gui("press enter to move to next step")
+
+        total_cost = total_ee_path_cost + (alpha * deflection_over_limit)
+
+        print("====================================================")
+        print("total path cost: ", total_ee_path_cost)
+        print("total Deflection over limit: ", deflection_over_limit)
+        print("alpha: ", alpha)
+        print("====================================================")
+        print("Total cost: ", total_cost)
+        print("====================================================")
+
+    def execute_with_controls_v2(self, robot, init_conf, block, plant_id=[], movable=[],
+                              deflection_limit=0, time_step=0.05):
+
+        # distance_fn, alpha = cost_utils
+
+        total_cost = 0
+        total_ee_path_cost = 0
+        deflection_over_limit = 0
+        alpha = 0.1
+
+        text_id = []
+
+        # text_ori = pybullet.getQuaternionFromEuler([1.57, 0.0, 0.0])
+        text_ori = pybullet.getQuaternionFromEuler([0.62, 0.0, 0.5])
+
+        pybullet.addUserDebugText("Deflection limit: %0.3f rad" % (deflection_limit), [-1.95, 1, 1.05],
+                                  textColorRGB=[1, 0, 0])
+
+        for b in movable:
+            b.observe_all()
+
+            for e, deflection in enumerate(b.deflections):
+                text_id.append(pybullet.addUserDebugText("Deflection of link " + str(e + 1) + ": " + str(deflection),
+                                                         [-2 - 0.2 * e, 1, 1 - 0.2 * e], textColorRGB=[0, 0, 0]))
+
+        prev_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
+
+        joints = get_movable_joints(robot)
+        position_gains = 7 * [0.01]
+
+        set_joint_positions(robot, joints, init_conf)
+        pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, init_conf,
+                                           positionGains=position_gains)
+        for t in range(20):
+            s_utils.step_sim_v2()
+
+        for i, body_path in enumerate(self.body_paths):
+            # for j in body_path.iterator():
+            for j in body_path.iterator_with_control_v2():
+
+                # for pid in plant_id:
+                #    plant_rot_joint_displacement_y, _, plant_hinge_y_reac, _ = pybullet.getJointState(pid, 0)
+                #    plant_rot_joint_displacement_x, _, plant_hinge_x_reac, _ = pybullet.getJointState(pid, 1)
+                #    pybullet.applyExternalTorque(pid, linkIndex=1,
+                #                                 torqueObj=[-200 * plant_rot_joint_displacement_x,
+                #                                            -200 * plant_rot_joint_displacement_y, 0],
+                #                                 flags=pybullet.WORLD_FRAME)
+
+                # if(pairwise_collision(robot, 2)):
+                #     print("Collision Detected!!")
+                #     exit()
+
+                for b in movable:
+                    b.observe_all()
+
+                    for e, deflection in enumerate(b.deflections):
+                        pybullet.addUserDebugText("Deflection of link " + str(e + 1) + ": %.3f rad" % (deflection),
+                                                  [-2 - 0.07 * e, 1, 1 - 0.07 * e], textColorRGB=[0, 0, 0],
+                                                  replaceItemUniqueId=text_id[e])
+
+                        print("Deflection of plant %d: %f" % (e, deflection))
+
+                        if (deflection > deflection_limit):
+                            print("Error! Deflection limit exceeded!")
+                            deflection_over_limit = deflection_over_limit + (deflection - deflection_limit)
+
+                            # import pickle
+                            # with open('path_smoothed.pkl', 'wb') as f:
+                            #     pickle.dump([path.body_paths[0].path], f)
+                            #
+                            # input("")
+
+                print("========================================")
+
+                cur_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
+
+                total_ee_path_cost = total_ee_path_cost + np.linalg.norm(cur_ee_pos - prev_ee_pos)
+
+                prev_ee_pos = cur_ee_pos
+
+                # for t in range(23):
+                #    pybullet.stepSimulation()
+
+                # time.sleep(time_step)
+                # wait_for_duration(time_step)
                 # wait_if_gui("press enter to move to next step")
 
         total_cost = total_ee_path_cost + (alpha * deflection_over_limit)
@@ -769,6 +888,30 @@ def get_free_motion_gen_with_angle_constraints_v4(robot, start_state_id, fixed=[
         obstacles = fixed + assign_fluent_state(fluents)
 
         path = plan_joint_motion_with_angle_contraints_v4(robot, start_state_id, conf2.joints, conf2.configuration,
+                                                          obstacles=obstacles, movable=movable,
+                                                          deflection_limit=deflection_limit,
+                                                          self_collisions=self_collisions)
+
+        if path is None:
+            if DEBUG_FAILURE: wait_if_gui('Free motion failed')
+            return None
+        command = Command([BodyPath(robot, path, joints=conf2.joints)])
+        return (command,)
+
+    return fn
+
+
+def get_free_motion_gen_with_angle_constraints_v6(robot, start_state_id, fixed=[], movable = [], deflection_limit = 0, saved_state = 0,
+                                                  teleport=False, self_collisions=True):
+    def fn(conf1, conf2, fluents=[]):
+        # assert ((conf1.body == conf2.body) and (conf1.joints == conf2.joints))
+        # if teleport:
+        #     path = [conf1.configuration, conf2.configuration]
+
+        conf1.assign_with_controls()
+        obstacles = fixed + assign_fluent_state(fluents)
+
+        path = plan_joint_motion_with_angle_contraints_v6(robot, start_state_id, conf2.joints, conf2.configuration,
                                                           obstacles=obstacles, movable=movable,
                                                           deflection_limit=deflection_limit,
                                                           self_collisions=self_collisions)

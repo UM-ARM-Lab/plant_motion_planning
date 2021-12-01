@@ -33,7 +33,7 @@ from motion_planners.motion_planners.rrt_connect import birrt, rrt_connect_with_
 from motion_planners.motion_planners.rrt_with_angle_constraints import rrt_with_angle_constraints
 from motion_planners.motion_planners.rrt import rrt
 from motion_planners.motion_planners.rrt_connect_with_angle_constraints_v2 import rrt_connect_v2, birrt_v2, birrt_v3, \
-    birrt_v4
+    birrt_v4, birrt_v6
 from motion_planners.motion_planners.meta import direct_path, solve
 
 import scripts.utils as s_utils
@@ -3744,34 +3744,34 @@ def get_limits_fn(body, joints, custom_limits={}, verbose=False):
     return limits_fn
 
 
-def get_collision_fn_with_angle_constraints_v3(body, joints, obstacles=[], movable = [], deflection_limit =0,
-                                               attachments=[], self_collisions=True, disabled_collisions=set(),
-                                               custom_limits={}, use_aabb=False, cache=False, max_distance=MAX_DISTANCE, **kwargs):
-
-    is_colliding = get_collision_fn_with_control(body, joints, obstacles, attachments, self_collisions,
-                                                 disabled_collisions, custom_limits, use_aabb, cache, max_distance,
-                                                 **kwargs)
-
-    def collision_fn(q, verbose=False):
-
-        if(is_colliding(q)):
-            return True
-
-        # step_simulation()
-        s_utils.step_sim()
-        for b in movable:
-            b.observe()
-
-            if(b.deflection > deflection_limit):
-                print("=======================")
-                print(f"b.deflection exceeded!: {b.deflection}")
-                print("configuration: ", q)
-                print("=======================")
-                return True
-
-        return False
-
-    return collision_fn
+# def get_collision_fn_with_angle_constraints_v3(body, joints, obstacles=[], movable = [], deflection_limit =0,
+#                                                attachments=[], self_collisions=True, disabled_collisions=set(),
+#                                                custom_limits={}, use_aabb=False, cache=False, max_distance=MAX_DISTANCE, **kwargs):
+#
+#     is_colliding = get_collision_fn_with_control(body, joints, obstacles, attachments, self_collisions,
+#                                                  disabled_collisions, custom_limits, use_aabb, cache, max_distance,
+#                                                  **kwargs)
+#
+#     def collision_fn(q, verbose=False):
+#
+#         if(is_colliding(q)):
+#             return True
+#
+#         # step_simulation()
+#         s_utils.step_sim()
+#         for b in movable:
+#             b.observe()
+#
+#             if(b.deflection > deflection_limit):
+#                 print("=======================")
+#                 print(f"b.deflection exceeded!: {b.deflection}")
+#                 print("configuration: ", q)
+#                 print("=======================")
+#                 return True
+#
+#         return False
+#
+#     return collision_fn
 
 def get_collision_fn_with_angle_constraints_v2(body, joints, obstacles=[], movable = [], deflection_limit =0,
                                                attachments=[], self_collisions=True, disabled_collisions=set(),
@@ -3803,6 +3803,42 @@ def get_collision_fn_with_angle_constraints_v2(body, joints, obstacles=[], movab
         return False
 
     return collision_fn
+
+
+def get_collision_fn_with_angle_constraints_v3(body, joints, obstacles=[], movable = [], deflection_limit =0,
+                                               attachments=[], self_collisions=True, disabled_collisions=set(),
+                                               custom_limits={}, use_aabb=False, cache=False, max_distance=MAX_DISTANCE,
+                                               **kwargs):
+
+    is_colliding = get_collision_fn_with_controls_v2(body, joints, obstacles, attachments, self_collisions, disabled_collisions,
+                                                  custom_limits, use_aabb, cache, max_distance, **kwargs)
+
+    def collision_fn(q, verbose=False):
+
+        if(is_colliding(q)):
+            return True
+
+        # step_simulation()
+        s_utils.step_sim_v2()
+        for e, b in enumerate(movable):
+            # b.observe()
+            #
+            # if(verbose):
+            #     print("Deflection of plant in collision fn %d: %f" % (e, b.deflection))
+
+            if(b.observe_all_and_check(deflection_limit)):
+                print("=======================")
+                print("Deflection exceeded!")
+                print(b.deflections)
+                # print(f"b.deflection exceeded!: {b.deflection}")
+                # print("configuration: ", q)
+                print("=======================")
+                return True
+
+        return False
+
+    return collision_fn
+
 
 def get_collision_fn_with_angle_constraints(body, joints, obstacles=[], movable = [], deflection_limit =0, attachments=[], self_collisions=True, disabled_collisions=set(),
                      custom_limits={}, use_aabb=False, cache=False, max_distance=MAX_DISTANCE, **kwargs):
@@ -3868,6 +3904,55 @@ def get_collision_fn_with_angle_constraints(body, joints, obstacles=[], movable 
 
         return False
 
+    return collision_fn
+
+
+
+def get_collision_fn_with_controls_v2(body, joints, obstacles=[], attachments=[], self_collisions=True, disabled_collisions=set(),
+                                   custom_limits={}, use_aabb=False, cache=False, max_distance=MAX_DISTANCE, **kwargs):
+    # TODO: convert most of these to keyword arguments
+    check_link_pairs = get_self_link_pairs(body, joints, disabled_collisions) if self_collisions else []
+    moving_links = frozenset(link for link in get_moving_links(body, joints)
+                             if can_collide(body, link)) # TODO: propagate elsewhere
+    attached_bodies = [attachment.child for attachment in attachments]
+    moving_bodies = [CollisionPair(body, moving_links)] + list(map(parse_body, attached_bodies))
+    #moving_bodies = list(flatten(flatten_links(*pair) for pair in moving_bodies)) # Introduces overhead
+    #moving_bodies = [body] + [attachment.child for attachment in attachments]
+    get_obstacle_aabb = cached_fn(get_buffered_aabb, cache=cache, max_distance=max_distance/2., **kwargs)
+    limits_fn = get_limits_fn(body, joints, custom_limits=custom_limits)
+    # TODO: sort bodies by bounding box size
+
+    def collision_fn(q, verbose=False):
+        if limits_fn(q):
+            return True
+
+        # set_joint_positions(body, joints, q)
+        pybullet.setJointMotorControlArray(body, joints, p.POSITION_CONTROL, q, positionGains=7 * [0.01])
+
+        for t in range(10):
+            s_utils.step_sim_v2()
+
+        for attachment in attachments:
+            attachment.assign()
+        #wait_for_duration(1e-2)
+        get_moving_aabb = cached_fn(get_buffered_aabb, cache=True, max_distance=max_distance/2., **kwargs)
+
+        for link1, link2 in check_link_pairs:
+            # Self-collisions should not have the max_distance parameter
+            # TODO: self-collisions between body and attached_bodies (except for the link adjacent to the robot)
+            if (not use_aabb or aabb_overlap(get_moving_aabb(body), get_moving_aabb(body))) and \
+                    pairwise_link_collision(body, link1, body, link2): #, **kwargs):
+                #print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
+                if verbose: print(body, link1, body, link2)
+                return True
+
+        for body1, body2 in product(moving_bodies, obstacles):
+            if (not use_aabb or aabb_overlap(get_moving_aabb(body1), get_obstacle_aabb(body2))) \
+                    and pairwise_collision(body1, body2, **kwargs):
+                #print(get_body_name(body1), get_body_name(body2))
+                if verbose: print(body1, body2)
+                return True
+        return False
     return collision_fn
 
 
@@ -4112,6 +4197,36 @@ def check_initial_end_with_controls(robot, start_conf, end_conf, collision_fn, v
     return True
 
 
+def check_initial_end_with_controls_v2(robot, start_conf, end_conf, collision_fn, verbose=True):
+    # TODO: collision_fn might not accept kwargs
+
+    joints = get_movable_joints(robot)
+
+    set_joint_positions(robot, joints, start_conf)
+    if collision_fn(start_conf):
+        print('Error! Initial configuration is in collision')
+        exit()
+
+    # for t in range(100):
+    #     pybullet.stepSimulation()
+    #
+    # input("initial config checked")
+
+    set_joint_positions(robot, joints, end_conf)
+    p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, end_conf, positionGains=7*[0.01])
+
+    t = 0
+    while(t <= 100):
+        t = t + 1
+        s_utils.step_sim_v2()
+
+    if collision_fn(end_conf):
+        print('Error! End configuration is in collision')
+        exit()
+
+    return True
+
+
 def check_initial_end_v4(robot, start_conf, end_conf, collision_fn, verbose=True):
     # TODO: collision_fn might not accept kwargs
     if collision_fn(start_conf, verbose=verbose):
@@ -4291,6 +4406,52 @@ def plan_joint_motion_with_angle_contraints_v4(body, start_state_id, joints, end
     # return rrt_connect(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, movable, **kwargs)
     return birrt_v4(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
                     movable, **kwargs)
+
+
+def plan_joint_motion_with_angle_contraints_v6(body, start_state_id, joints, end_conf, obstacles=[], attachments=[],
+                                               movable = [], deflection_limit = 0, self_collisions=True, disabled_collisions=set(),
+                                               weights=None, resolutions=None, max_distance=MAX_DISTANCE,
+                                               use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
+
+    assert len(joints) == len(end_conf)
+    if (weights is None) and (resolutions is not None):
+        weights = np.reciprocal(resolutions)
+
+    sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
+    distance_fn = get_distance_fn(body, joints, weights=weights)
+    extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
+    collision_fn = get_collision_fn_with_angle_constraints_v3(body, joints, obstacles, movable, deflection_limit,
+                                                              attachments, self_collisions, disabled_collisions,
+                                                              custom_limits=custom_limits, max_distance=max_distance,
+                                                              use_aabb=use_aabb, cache=cache)
+    collision_fn_back = get_collision_fn_with_angle_constraints_v3(body, joints, obstacles, [], deflection_limit,
+                                                              attachments, self_collisions, disabled_collisions,
+                                                              custom_limits=custom_limits, max_distance=max_distance,
+                                                              use_aabb=use_aabb, cache=cache)
+
+    start_conf = get_joint_positions(body, joints)
+    # for i in range(e+1, len(path2)):
+    #     tree2.append(path2[i])
+
+    # Wait for some time to let the environment settle down
+    print("Waiting for the environment to settle...")
+    t = 0
+    while(t <= 100):
+        t = t + 1
+        s_utils.step_sim_v2()
+        time.sleep(0.01)
+
+    if not check_initial_end_with_controls_v2(body, start_conf, end_conf, collision_fn):
+        return None
+
+    # return rrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
+    # return rrt_with_angle_constraints(start_conf, start_state_id, end_conf, distance_fn, sample_fn, extend_fn,
+    #                                   collision_fn, **kwargs)
+    # return rrt(body, start_conf, start_state_id, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, movable, **kwargs)
+    # return rrt_connect(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, movable, **kwargs)
+    return birrt_v6(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn,
+                    [collision_fn, collision_fn_back], movable, **kwargs)
+
 
 def plan_joint_motion_with_angle_contraints_v2(body, start_state_id, joints, end_conf, obstacles=[], attachments=[],
                       movable = [], deflection_limit = 0, self_collisions=True, disabled_collisions=set(),

@@ -81,4 +81,7 @@ p.setGravity(0, 0, -10)
 p.setRealTimeSimulation(1)
 
 while(1):
+
+
+
     time.sleep(1/240.0)

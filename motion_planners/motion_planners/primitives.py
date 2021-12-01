@@ -91,6 +91,61 @@ def extend_towards_with_controls(tree, target, distance_fn, extend_fn, collision
     success = len(extend) == len(safe)
     return last, success
 
+def extend_towards_with_angle_constraint_v4(tree, target, distance_fn, extend_fn, collision_fn, movable, robot, swap=False, tree_frequency=1):
+    assert tree_frequency >= 1
+
+    # print("Target: ",target, "Target configuration displayed...")
+    # joints = pyb_tools_utils.get_movable_joints(robot)
+    # pyb_tools_utils.set_joint_positions(robot, joints, target)
+    # input("press enter to continue...")
+
+
+    # Find the nearest node and restore its simulation state
+    last = argmin(lambda n: distance_fn(n.config, target), tree)
+    last.restore_state()
+
+    extend = list(asymmetric_extend(last.config, target, extend_fn, backward=swap))
+    # safe = list(takewhile(negate(collision_fn), extend))
+
+    pyb_tools_utils.set_joint_positions(robot, pyb_tools_utils.get_movable_joints(robot), extend[0])
+    pybullet.setJointMotorControlArray(robot, pyb_tools_utils.get_movable_joints(robot), pybullet.POSITION_CONTROL,
+                                       extend[0],
+                                       positionGains=7 * [0.01])
+    for t in range(10):
+        s_utils.step_sim_v2()
+
+    safe = []
+    node_state = []
+    for node in extend:
+
+        # pyb_tools_utils.step_simulation()
+        s_utils.step_sim_v2()
+
+        # print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+        # print("is_collision?", collision_fn(node))
+
+        if not collision_fn(node):
+            # print("--------- safe --------------")
+            node_state.append(pyb_tools_utils.save_state())
+            safe.append(node)
+        else:
+            # print("--------- collision --------------")
+            break
+
+        # for e,b in enumerate(movable):
+        #     b.observe
+        #     print(f"plant {e} deflection: {b.deflection}")
+
+        # print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+        # input("")
+
+    for i, q in enumerate(safe):
+        if (i % tree_frequency == 0) or (i == len(safe) - 1):
+            last = TreeNode_v2(q, state_id=node_state[i], parent=last)
+            tree.append(last)
+    success = len(extend) == len(safe)
+    return last, success
+
 def extend_towards_with_angle_constraint_v2(tree, target, distance_fn, extend_fn, collision_fn, movable, robot, swap=False, tree_frequency=1):
     assert tree_frequency >= 1
 
