@@ -17,7 +17,8 @@ from .utils import get_pose, set_pose, get_movable_joints, \
     plan_joint_motion2, plan_joint_motion_with_angle_contraints_v2, \
     plan_joint_motion_with_angle_contraints_v3, plan_joint_motion_with_angle_contraints_v4, \
     plan_joint_motion_with_angle_constraints_v5, plan_joint_motion_with_controls, \
-    plan_joint_motion_with_angle_contraints_v6, plan_joint_motion_with_angle_contraints_v7
+    plan_joint_motion_with_angle_contraints_v6, plan_joint_motion_with_angle_contraints_v7, \
+    plan_joint_motion_single_plant
 
 # from plant_motion_planning.utils import compute_total_cost, compute_path_cost
 
@@ -967,6 +968,23 @@ def get_free_motion_gen(robot, fixed=[], teleport=False, self_collisions=True):
     return fn
 
 
+def get_free_motion_gen_single_plant(robot, fixed=[], teleport=False, self_collisions=True):
+    def fn(conf1, conf2, fluents=[]):
+        assert ((conf1.body == conf2.body) and (conf1.joints == conf2.joints))
+        if teleport:
+            path = [conf1.configuration, conf2.configuration]
+        else:
+            conf1.assign_with_controls_old()
+            obstacles = fixed + assign_fluent_state(fluents)
+            path = plan_joint_motion_single_plant(robot, conf2.joints, conf2.configuration, obstacles=obstacles,
+                                                   self_collisions=self_collisions)
+            if path is None:
+                if DEBUG_FAILURE: wait_if_gui('Free motion failed')
+                return None
+        command = Command([BodyPath(robot, path, joints=conf2.joints)])
+        return (command,)
+    return fn
+
 def get_free_motion_gen_with_controls(robot, fixed=[], teleport=False, self_collisions=True):
     def fn(conf1, conf2, fluents=[]):
         assert ((conf1.body == conf2.body) and (conf1.joints == conf2.joints))
@@ -1032,7 +1050,7 @@ def get_free_motion_gen_with_angle_constraints_v4(robot, start_state_id, fixed=[
         """
 
         # Assign the initial configuration
-        conf1.assign_with_controls()
+        conf1.assign_with_controls_old()
         obstacles = fixed + assign_fluent_state(fluents)
 
         # Plan a path between conf1 and conf2

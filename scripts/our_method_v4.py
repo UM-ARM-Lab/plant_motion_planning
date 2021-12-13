@@ -59,7 +59,7 @@ def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g, 
 
     # A motion planner function that will be used to find a path
     free_motion_fn = get_free_motion_gen_with_angle_constraints_v4(robot, start_state_id, fixed= fixed, movable = movable,
-                                                                   deflection_limit = deflection_limit, teleport=teleport)
+                                                                   deflection_limit = deflection_limit)
     # free_motion_fn = get_free_motion_gen(robot, fixed = (fixed), teleport=False)
 
     # Number of attempts at finding a path between conf_i and conf_g
@@ -227,7 +227,9 @@ def main(display='execute'): # control | execute | step
 
     # Moving arm from conf_i to conf_g and avoiding the block, floor. The plants are deflected within their limits to
     # reach the goal
-    command = move_arm_conf2conf(robot, [floor, block], plant_representations, deflection_limit,
+    # command = move_arm_conf2conf(robot, [floor, block], plant_representations, deflection_limit,
+    #                              conf_i, conf_g)
+    command = move_arm_conf2conf(robot, [floor, block], [], deflection_limit,
                                  conf_i, conf_g)
 
     if (command is None) or (display is None):

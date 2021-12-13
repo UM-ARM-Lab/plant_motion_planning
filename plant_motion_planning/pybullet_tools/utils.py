@@ -4063,6 +4063,7 @@ def get_collision_fn_with_controls(body, joints, obstacles=[], attachments=[], s
     limits_fn = get_limits_fn(body, joints, custom_limits=custom_limits)
     # TODO: sort bodies by bounding box size
 
+
     def collision_fn(q, verbose=False):
         if limits_fn(q):
             return True
@@ -4262,6 +4263,7 @@ def check_initial_end_with_controls(robot, start_conf, end_conf, collision_fn, v
 
     joints = get_movable_joints(robot)
 
+
     set_joint_positions(robot, joints, start_conf)
     if collision_fn(start_conf):
         print('Error! Initial configuration is in collision')
@@ -4455,6 +4457,39 @@ def plan_joint_motion_with_angle_constraints_v5(body, start_state_id, joints, en
     return birrt_v4(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
                     movable, **kwargs)
 
+
+
+def plan_joint_motion_single_plant(body, joints, end_conf, obstacles=[], attachments=[],
+                                    self_collisions=True, disabled_collisions=set(),
+                                    weights=None, resolutions=None, max_distance=MAX_DISTANCE,
+                                    use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
+
+    assert len(joints) == len(end_conf)
+    if (weights is None) and (resolutions is not None):
+        weights = np.reciprocal(resolutions)
+    sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
+    distance_fn = get_distance_fn(body, joints, weights=weights)
+    extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
+
+    collision_fn = get_collision_fn_with_controls(body, joints, obstacles, attachments, self_collisions,
+                                                  disabled_collisions,
+                                                  custom_limits=custom_limits, max_distance=max_distance,
+                                                  use_aabb=use_aabb, cache=cache)
+    # collision_fn = get_collision_fn_with_angle_constraints_v2(body, joints, obstacles, movable, deflection_limit, attachments, self_collisions, disabled_collisions,
+    #                                                           custom_limits=custom_limits, max_distance=max_distance,
+    #                                                           use_aabb=use_aabb, cache=cache)
+
+    start_conf = get_joint_positions(body, joints)
+    if not check_initial_end_with_controls(body, start_conf, end_conf, collision_fn):
+        return None
+
+    if algorithm is None:
+        # return rrt_connect_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
+        #                                  **kwargs)
+        return birrt_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
+        # return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
+    return solve(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, algorithm=algorithm, **kwargs)
+    #return plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)
 
 
 def plan_joint_motion_with_controls(body, joints, end_conf, obstacles=[], attachments=[],
