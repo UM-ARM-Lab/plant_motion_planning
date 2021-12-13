@@ -1,11 +1,13 @@
+"""
+This file was used to visualize the single stemmed plant during testing.
+"""
+
 import os
 import time
 import math
 import pybullet as p
 import pybullet_data
-import numpy as np
-from plant_motion_planning import utils, cfg, representation
-from pybullet_tools.utils import unit_point, unit_quat, draw_pose
+from plant_motion_planning import cfg, representation
 
 
 trail_length_limit = math.pi / 2
@@ -15,15 +17,18 @@ p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
 p.setGravity(0, 0, 0)
 
-
+# Load the model of the checkerboard plane to serve as a "floor" for simulation
 plane_id = p.loadURDF("plane.urdf")
+
+# The initial orientation of the plant
 plant_start_ori = p.getQuaternionFromEuler([0.0, 0.0, 0.0])
-plant_id = p.loadURDF(os.path.join(cfg.ROOT_DIR, "./urdf/plant_multi_dof_model.urdf"), basePosition=[0, 0, 0.5], baseOrientation=plant_start_ori,
-                      useFixedBase=True)
-# arm_id = p.loadURDF("kuka_iiwa_interface/victor_description/urdf/victor.urdf", basePosition=[0, 3, 0],
-#                     baseOrientation=p.getQuaternionFromEuler([0, 0, -math.pi / 4]), useFixedBase=1)
+# Load a model of the plant along with position and orientation
+plant_id = p.loadURDF(os.path.join(cfg.ROOT_DIR, "./urdf/plant_multi_dof_model_original.urdf"),
+                      basePosition=[0, 0, 0.5], baseOrientation=plant_start_ori, useFixedBase=True)
+
+# Make the plant responsive to external forces
 p.setJointMotorControlArray(plant_id, [0, 1], p.VELOCITY_CONTROL, targetVelocities=[0, 0],
-                            forces=[1e-1, 1e-1])  # make plant responsive to external force
+                            forces=[1e-1, 1e-1])
 
 ################## Drawing the axes for all frames of interest ################
 
@@ -38,16 +43,11 @@ utils.draw_frame_axes(start = (0,0,0), length = 2, parentid = plant_id, parentli
 
 ##################################################################################
 
-# TODO find out what joint id, link id is for the joint that we want
 plant1 = representation.TwoAngleRepresentation(plant_id, 1)
-
-
-# running_sum_disp_x = 0.0
-# running_sum_disp_y = 0.0
 
 text_ori = p.getQuaternionFromEuler([1.57, 0.0, 0.0])
 
-p.addUserDebugText("hello world", [1, 1, 1], textColorRGB=[0, 0, 0], textOrientation=text_ori)
+# p.addUserDebugText("hello world", [1, 1, 1], textColorRGB=[0, 0, 0], textOrientation=text_ori)
 
 t = 0
 while True:

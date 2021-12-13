@@ -10,6 +10,8 @@ setup(
     author_email='aaatresh@umich.edu',
     description='',
     test_suite='pytest',
-    tests_require=[],
-    install_requires=['numpy', 'pybullet', 'scipy']
+    tests_require=[
+        'pytest'
+    ],
+    install_requires=['numpy', 'pybullet', 'scipy', 'Pillow', 'psutil', 'PyYAML']
 )

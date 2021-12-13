@@ -8,7 +8,7 @@ class PlantJointState:
     pass
 
 
-# Defining the raised height of the plant. Check plant_multi_dof_model.urdf for this value
+# Defining the raised height of the plant. Check plant_multi_dof_model_original.urdf for this value
 RAISED_HEIGHT = 0.25
 
 
