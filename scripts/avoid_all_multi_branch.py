@@ -153,7 +153,7 @@ def main(display='execute'): # control | execute | step
     elif display == 'step':
         command.step()
     elif display == 'angle_step':
-        command.execute_with_controls_v2(robot, init_conf, block, plant_id, [plant_rep],
+        command.execute_with_controls_v2(robot, init_conf, [plant_rep],
                                          deflection_limit)
     else:
         raise ValueError(display)

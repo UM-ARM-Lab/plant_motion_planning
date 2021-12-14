@@ -155,7 +155,7 @@ def main(display='execute'): # control | execute | step
         #                                                     deflection_limit)
         # command.execute_with_controls(robot, init_conf, block, plant_ids, plant_representations,
         #                                                     deflection_limit)
-        command.execute_with_controls_v2(robot, init_conf, block, plant_id, [plant_rep],
+        command.execute_with_controls_v2(robot, init_conf, [plant_rep],
                                          deflection_limit)
     else:
         raise ValueError(display)
