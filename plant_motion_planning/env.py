@@ -32,8 +32,7 @@ class Environment():
 class SinglePlantEnv(Environment):
 
     def __init__(self, deflection_limit, num_branches_per_stem=None, total_num_vert_stems=None,
-                 total_num_extensions=None, plant_pos_xy=(0, 0), base_offset_xy=(0, 0), loadPath=None):
-
+                 total_num_extensions=None, plant_pos_xy=(0, 0), base_offset_xy=(0, 0), loadPath=None, physicsClientId=None):
 
         pose_floor = pyb_tools_utils.Pose(pyb_tools_utils.Point(x=base_offset_xy[0], y=base_offset_xy[1], z=0))
         floor = pyb_tools_utils.load_model(os.path.join(cfg.ROOT_DIR, 'models/short_floor.urdf'), pose=pose_floor,
@@ -52,7 +51,10 @@ class SinglePlantEnv(Environment):
 
         if(loadPath is None):
             self.plant_id, self.plant_rep, self.joint_list, self.base_id = generate_random_plant(num_branches_per_stem,
-                                                                    total_num_vert_stems, total_num_extensions, plant_pos_xy)
+                                                                    total_num_vert_stems, total_num_extensions,
+                                                                                                 (plant_pos_xy[0] + base_offset_xy[0],
+                                                                                                  plant_pos_xy[1] + base_offset_xy[1]),
+                                                                                                 physicsClientId=physicsClientId)
         else:
             self.plant_id, self.plant_rep, self.joint_list, self.base_id = load_plant_from_urdf(os.path.join(loadPath, "plant.urdf"),
                                                                                                 os.path.join(loadPath, "plant_params.pkl"), base_offset_xy)
@@ -101,9 +103,6 @@ class SinglePlantEnv(Environment):
 
     def step(self, action, set_joint_pos=False):
 
-        # TODO: Action vs State
-        # Move arm to given state.
-
         if(set_joint_pos):
             pyb_tools_utils.set_joint_positions(self.robot, self.joints, action)
         p.setJointMotorControlArray(self.robot, self.joints, p.POSITION_CONTROL, action, positionGains=7 * [0.01])
@@ -117,6 +116,25 @@ class SinglePlantEnv(Environment):
             # stepping through simulation
             for t in range(200):
                 pyb_tools_utils.step_simulation()
+
+        return None
+
+
+    def step_after_restoring(self, action, set_joint_pos=True):
+
+        if(set_joint_pos):
+            pyb_tools_utils.set_joint_positions(self.robot, self.joints, action)
+        p.setJointMotorControlArray(self.robot, self.joints, p.POSITION_CONTROL, action, positionGains=7 * [0.01])
+
+
+        # for i in range(11):
+        #
+        #     # Restore plant joints after deflection
+        #     self._restore_plant_joints()
+        #
+        #     # stepping through simulation
+        #     for t in range(200):
+        #         pyb_tools_utils.step_simulation()
 
         return None
 
@@ -136,20 +154,41 @@ class MultiPlantWorld(Environment):
         self.envs = {}
         for x in xs:
             for y in ys:
-                xy = (x,y)
+                xy = (x, y)
                 self.envs[xy] = SinglePlantEnv(*args, base_offset_xy=xy, **kwargs)
         super(MultiPlantWorld, self).__init__()
 
         self.sample_robot = self.envs[(xs[0], ys[0])].robot
         self.joints = self.envs[(xs[0], ys[0])].joints
 
-    def step(self, action, set_joint_pos=False):
-        ret = {}
-        # step all the environments with the same action
-        for xy, env in self.envs.items():
-            ret[xy] = env.step(action, set_joint_pos=set_joint_pos)
+    # def step(self, action, set_joint_pos=False):
+    #     ret = {}
+    #     # step all the environments with the same action
+    #     for xy, env in self.envs.items():
+    #         ret[xy] = env.step(action, set_joint_pos=set_joint_pos)
+    #
+    #     return ret
 
-        return ret
+    def step(self, action, set_joint_pos=False):
+        for xy, env in self.envs.items():
+            env.step_after_restoring(action, set_joint_pos=set_joint_pos)
+
+        for t in range(11):
+            for xy, env in self.envs.items():
+                env._restore_plant_joints()
+
+
+            for t in range(200):
+                pyb_tools_utils.step_simulation()
+
+
+    def step_after_restoring(self, action):
+
+        for xy, env in self.envs.items():
+            env.step_after_restoring(action)
+
+        self.step(action)
+
 
     def net_constraint_violation_checker_forward(self, q):
 

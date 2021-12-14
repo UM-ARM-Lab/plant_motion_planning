@@ -155,7 +155,7 @@ def check_forward_path_multi_world(path2, collision_fn, nodes1, nodes2, multi_wo
     # pybullet.setJointMotorControlArray(robot, pyb_utils.get_movable_joints(robot), pybullet.POSITION_CONTROL,
     #                                    last_tree1.config, positionGains=7 * [0.01])
 
-    multi_world_env.step(last_tree1.config, True)
+    multi_world_env.step_after_restoring(last_tree1.config)
     # for t in range(10):
     #     s_utils.step_sim_v2()
 
@@ -163,7 +163,7 @@ def check_forward_path_multi_world(path2, collision_fn, nodes1, nodes2, multi_wo
 
         multi_world_env.step(node.config)
 
-        if(collision_fn(node.config, True)):
+        if(collision_fn(node.config)):
             print("*********************************************")
             print("Backward path not feasible!!")
             print("*********************************************")
@@ -744,10 +744,8 @@ def rrt_connect_multi_world(start, start_state_id, goal, distance_fn, sample_fn,
 
     goal_state_id = p.saveState()
 
-    # input("")
-
     p.restoreState(start_state_id)
-
+    multi_world_env.step_after_restoring(start)
 
     # TODO: support continuous collision_fn with two arguments
     #collision_fn = wrap_collision_fn(collision_fn)

@@ -41,7 +41,7 @@ def init_plant_ids(pids):
 
 
 plants_ids = []
-joint_list = 0
+joint_list = -1
 base_id = -1
 
 def step_sim():
@@ -250,7 +250,6 @@ def generate_random_plant(num_branches_per_stem, total_num_vert_stems, total_num
                         stem_half_width=0.1, physicsClientId=None, save_plant=False):
 
     global joint_list, base_id
-
 
     # Create plant
     base_id, joint_list, main_stem_indices, base_points, \

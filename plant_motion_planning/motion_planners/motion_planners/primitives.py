@@ -160,9 +160,10 @@ def extend_towards_with_angle_constraint_multi_world(tree, target, distance_fn, 
     # input("press enter to continue...")
 
 
+
     # Find the nearest node and restore its simulation state
     last = argmin(lambda n: distance_fn(n.config, target), tree)
-    # last.restore_state()
+    last.restore_state()
 
     extend = list(asymmetric_extend(last.config, target, extend_fn, backward=swap))
     # safe = list(takewhile(negate(collision_fn), extend))
@@ -173,11 +174,9 @@ def extend_towards_with_angle_constraint_multi_world(tree, target, distance_fn, 
     #                                    positionGains=7 * [0.01])
 
 
-    input("starting debugging...")
 
-    multi_world_env.step(extend[0], True)
+    multi_world_env.step_after_restoring(extend[0])
 
-    input("after debug")
 
     safe = []
     node_state = []

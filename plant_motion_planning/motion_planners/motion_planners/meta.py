@@ -201,9 +201,6 @@ def random_restarts_multi_world(solve_fn, start_state_id, start, goal, distance_
 
         path, node_path = path_data
 
-        input("Unsmoothed Path found...")
-        exit()
-
         # else:
         #     path, node_path = path_data
 
@@ -259,7 +256,7 @@ def random_restarts_multi_world(solve_fn, start_state_id, start, goal, distance_
                 total_ee_path_cost = total_ee_path_cost + np.linalg.norm(cur_ee_pos - prev_ee_pos)
 
                 multi_plant_env.step(q)
-                if(collision_fn(q, True)):
+                if(collision_fn(q)):
                     # input("collision detected in forward path... Press enter to abandon current path...")
                     print("collision detected in forward path... Press enter to abandon current path...")
                     # for e, b in enumerate(movable):

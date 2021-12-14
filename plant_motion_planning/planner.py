@@ -141,3 +141,10 @@ class Planner():
             print("Error! Command is None!")
         else:
             self.command.execute_with_controls_v3(single_plant_env.robot, self.conf1.configuration, single_plant_env)
+
+    def execute_path_multi_world(self, multi_world_env):
+
+        if self.command is None:
+            print("Error! Command is None!")
+        else:
+            self.command.execute_multi_world(self.conf1.configuration, multi_world_env)

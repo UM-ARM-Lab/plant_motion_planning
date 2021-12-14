@@ -145,7 +145,14 @@ def main(display='execute'): # control | execute | step
     # single_plant_env = SinglePlantEnv(deflection_limit, base_offset_xy=base_offset_xy,
     #                                   loadPath=args.plant_filename)
 
-    multi_world_env = MultiPlantWorld(base_offset_xs, base_offset_ys, deflection_limit, loadPath=args.plant_filename)
+    # Generate random plant for each world
+    multi_world_env = MultiPlantWorld(base_offset_xs, base_offset_ys, deflection_limit, num_branches_per_stem, total_num_vert_stems,
+                                      total_num_extensions, plant_pos_xy, physicsClientId=cli)
+
+    # Load model for debugging
+    # multi_world_env = MultiPlantWorld(base_offset_xs, base_offset_ys, deflection_limit, loadPath=args.plant_filename)
+
+    # input()
 
     planner = Planner()
 
@@ -162,7 +169,7 @@ def main(display='execute'): # control | execute | step
         log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4, fileName=args.video_filename)
 
     # TODO: Execution...
-    planner.execute_path(single_plant_env)
+    planner.execute_path_multi_world(multi_world_env)
     print("execution completed!")
 
     # shutting down logger

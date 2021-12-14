@@ -27,9 +27,9 @@ parser.add_argument("--plant_filename", type=str, help="Path to locations of pla
                     default=None)
 args = parser.parse_args()
 
-if(args.deflection_limit == None):
-    print("Error!! All data must be provided")
-    exit()
+# if(args.deflection_limit == None):
+#     print("Error!! All data must be provided")
+#     exit()
 
 
 def move_arm_conf2conf(robot, fixed, conf_i, conf_g):
@@ -104,14 +104,18 @@ def main(display='execute'): # control | execute | step
     num_branches_per_stem = 2
     total_num_vert_stems = 1
     total_num_extensions = 1
-    base_pos_xy = [np.random.uniform(low=0, high=0.35),np.random.uniform(low=-0.5, high=0.0)]
-    # base_pos_xy = [0.6, 0.6]
-    plant_id, plant_rep, joint_list, base_id = generate_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_extensions,
+    # base_pos_xy = [np.random.uniform(low=0, high=0.35),np.random.uniform(low=-0.5, high=0.0)]
+    base_pos_xy = [0.6, 0.6]
+    plant_id1, plant_rep1, joint_list1, base_id1 = generate_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_extensions,
                                                 base_pos_xy, physicsClientId=cli, save_plant=False)
 
     # Load a plant from a previously generated random plant that has then been stored in a urdf file
     # plant_id, plant_rep, joint_list, base_id = load_plant_from_urdf(os.path.join(args.plant_filename, "plant.urdf"),
     #                                            os.path.join(args.plant_filename, "plant_params.pkl"))
+
+    base_pos_xy = [-0.6, -0.6]
+    plant_id2, plant_rep2, joint_list2, base_id2 = generate_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_extensions,
+                                                                     base_pos_xy, physicsClientId=cli, save_plant=False)
 
     dump_world()
 

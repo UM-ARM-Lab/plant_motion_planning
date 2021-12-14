@@ -279,6 +279,10 @@ def create_plant_params(num_branches_per_stem,
 def create_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_extensions, base_pos_xy, stem_half_length=0.1,
                         stem_half_width=0.1):
 
+    global current_index, main_stem_index
+
+    current_index = 0
+    main_stem_index = 0
 
     base_params, stems_params, main_stem_indices = create_plant_params(num_branches_per_stem, total_num_vert_stems,
                                                                        total_num_extensions, base_pos_xy)
