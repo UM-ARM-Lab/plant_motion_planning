@@ -29,10 +29,11 @@ from .transformations import quaternion_from_matrix, euler_from_quaternion, quat
 
 directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(directory, '../motion'))
-from plant_motion_planning.motion_planners.motion_planners.rrt_connect import birrt, birrt_with_controls
+from plant_motion_planning.motion_planners.motion_planners.rrt_connect import birrt, birrt_with_controls, \
+    birrt_single_plant
 from plant_motion_planning.motion_planners.motion_planners.rrt_connect_with_angle_constraints_v2 import birrt_v2, \
     birrt_v3, \
-    birrt_v4, birrt_v6, birrt_v7
+    birrt_v4, birrt_v6, birrt_v7, birrt_multi_world
 from plant_motion_planning.motion_planners.motion_planners.meta import direct_path, solve
 
 import plant_motion_planning.utils as s_utils
@@ -4292,6 +4293,32 @@ def check_initial_end_with_controls(robot, start_conf, end_conf, collision_fn, v
     return True
 
 
+def check_initial_end_multi_world(robot, start_conf, end_conf, collision_fn, multi_world_env, verbose=True):
+
+    # for env in multi_world_env.envs:
+    #     set_joint_positions(multi_world_env.envs[env].robot, multi_world_env.joints, start_conf)
+
+    multi_world_env.step(start_conf, True)
+    if collision_fn(start_conf):
+        print('Error! Initial configuration is in collision')
+        exit()
+
+    # for env in multi_world_env.envs:
+    #     set_joint_positions(multi_world_env.envs[env].robot, multi_world_env.joints, end_conf)
+    # p.setJointMotorControlArray(robot, multi_world_env.joints, p.POSITION_CONTROL, end_conf, positionGains=7*[0.01])
+
+    # t = 0
+    # while(t <= 10):
+    #     t = t + 1
+    #     # s_utils.step_sim_v2()
+    multi_world_env.step(end_conf, True)
+
+    if collision_fn(end_conf):
+        print('Error! End configuration is in collision')
+        exit()
+
+    return True
+
 def check_initial_end_with_controls_v3(robot, start_conf, end_conf, collision_fn, single_plant_env, verbose=True):
 
     set_joint_positions(robot, single_plant_env.joints, start_conf)
@@ -4470,23 +4497,25 @@ def plan_joint_motion_single_plant(body, joints, end_conf, obstacles=[], attachm
     sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
     distance_fn = get_distance_fn(body, joints, weights=weights)
     extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
-
     collision_fn = get_collision_fn_with_controls(body, joints, obstacles, attachments, self_collisions,
                                                   disabled_collisions,
                                                   custom_limits=custom_limits, max_distance=max_distance,
                                                   use_aabb=use_aabb, cache=cache)
-    # collision_fn = get_collision_fn_with_angle_constraints_v2(body, joints, obstacles, movable, deflection_limit, attachments, self_collisions, disabled_collisions,
-    #                                                           custom_limits=custom_limits, max_distance=max_distance,
-    #                                                           use_aabb=use_aabb, cache=cache)
+    # collision_fn = get_collision_fn_with_controls_v2(body, joints, obstacles, attachments, self_collisions,
+    #                                                  disabled_collisions,
+    #                                                  custom_limits=custom_limits, max_distance=max_distance,
+    #                                                  use_aabb=use_aabb, cache=cache)
 
     start_conf = get_joint_positions(body, joints)
     if not check_initial_end_with_controls(body, start_conf, end_conf, collision_fn):
         return None
+    # if not check_initial_end_with_controls_v2(body, start_conf, end_conf, collision_fn):
+    #     return None
 
     if algorithm is None:
         # return rrt_connect_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
         #                                  **kwargs)
-        return birrt_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
+        return birrt_single_plant(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
         # return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
     return solve(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, algorithm=algorithm, **kwargs)
     #return plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)
@@ -4574,9 +4603,9 @@ def plan_joint_motion_with_angle_contraints_v4(body, start_state_id, joints, end
                                                               custom_limits=custom_limits, max_distance=max_distance,
                                                               use_aabb=use_aabb, cache=cache)
     # TODO
-    # collision_fn_back = get_collision_fn_with_angle_constraints_v2(body, joints, obstacles, movable, deflection_limit, attachments, self_collisions, disabled_collisions,
-    #                                                           custom_limits=custom_limits, max_distance=max_distance,
-    #                                                           use_aabb=use_aabb, cache=cache)
+    collision_fn_back = get_collision_fn_with_angle_constraints_v2(body, joints, obstacles, [], deflection_limit, attachments, self_collisions, disabled_collisions,
+                                                              custom_limits=custom_limits, max_distance=max_distance,
+                                                              use_aabb=use_aabb, cache=cache)
 
     start_conf = get_joint_positions(body, joints)
 
@@ -4593,8 +4622,84 @@ def plan_joint_motion_with_angle_contraints_v4(body, start_state_id, joints, end
         return None
 
     # Execute Bi-directional RRT
-    return birrt_v4(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
+    return birrt_v4(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn, [collision_fn, collision_fn_back],
                     movable, **kwargs)
+
+
+def plan_joint_motion_with_angle_contraints_multi_world(body, start_state_id, end_conf, multi_world_env, attachments=[],
+                                               self_collisions=True, disabled_collisions=set(), weights=None,
+                                               resolutions=None, max_distance=MAX_DISTANCE, use_aabb=False, cache=True,
+                                               custom_limits={}, algorithm=None, **kwargs):
+
+    """
+    Plan joint motion from present state to end_conf
+
+    :param body: Body ID of the robot
+    :param start_state_id: The saved state ID of the initial state of the environment. This is returned by pybullet
+    when saving the environment.
+    :param joints: List of movable joints in body.
+    :param end_conf: End or target configuration that the arm must reach from its present configuration.
+    :param obstacles: Entities in the environment that the Arm must not collide with.
+    :param attachments: -
+    :param movable: List of entities in our experiment that will be allowed to deflect and move. These are the
+    characterization objects that are found during the creation of the plant.
+    :param deflection_limit: Maximum deflection limit each link is allowed to deflect.
+    :param self_collisions: Flag that toggles self-collisions during simulation.
+    :param disabled_collisions: -
+    :param weights: -
+    :param resolutions: Resolution of extension.
+    :param max_distance: -
+    :param use_aabb: -
+    :param cache: -
+    :param custom_limits: -
+    :param algorithm: Planning algorithm to be used. eg. Vanilla RRT, RRT extend etc.
+    :param kwargs: -
+
+    :return: path between present configuration and end_conf
+    """
+
+    # Sanity checking
+    assert len(multi_world_env.joints) == len(end_conf)
+    if (weights is None) and (resolutions is not None):
+        weights = np.reciprocal(resolutions)
+
+    # Sampler
+    sample_fn = get_sample_fn(multi_world_env.sample_robot, multi_world_env.joints, custom_limits=custom_limits)
+    # Distance function in C-space
+    distance_fn = get_distance_fn(multi_world_env.sample_robot, multi_world_env.joints, weights=weights)
+    # Extension function
+    extend_fn = get_extend_fn(multi_world_env.sample_robot, multi_world_env.joints, resolutions=resolutions)
+    # Collision function that checks for collision with rigid objects and any violations in deflection with movable
+    # objects. This function is used by the forward tree.
+    collision_fn = multi_world_env.net_constraint_violation_checker_forward
+    # collision function for the backward tree. This ignores all plants and only checks if there is any collision with
+    # rigid objects
+    collision_fn_back = multi_world_env.net_constraint_violation_checker_backward
+
+    start_conf = get_joint_positions(multi_world_env.sample_robot, multi_world_env.joints)
+
+    # Wait for some time to let the environment settle down
+    print("Waiting for the environment to settle...")
+    # t = 0
+    # while(t <= 10):
+    #     t = t + 1
+    #     # TODO: Possible error
+    #     multi_world_env.step(start_conf)
+    multi_world_env.step(start_conf)
+
+
+    # Check the initial and final configurations for any constraint violations
+    if not check_initial_end_multi_world(body, start_conf, end_conf, collision_fn, multi_world_env):
+        return None
+
+
+    # Execute Bi-directional RRT
+    # return birrt_v6(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn,
+    #                 [collision_fn, collision_fn_back], movable, **kwargs)
+    # return birrt_v7(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn,
+    #                 [collision_fn, collision_fn_back], single_plant_env, **kwargs)
+    return birrt_multi_world(start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn,
+                    [collision_fn, collision_fn_back], multi_world_env, **kwargs)
 
 
 def plan_joint_motion_with_angle_contraints_v7(body, start_state_id, end_conf, single_plant_env, attachments=[],

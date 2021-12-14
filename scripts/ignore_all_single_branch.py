@@ -128,7 +128,7 @@ def main(display='execute'): # control | execute | step
 
     # Moving arm from conf_i to conf_g and avoiding the block, floor. The plants are deflected within their limits to
     # reach the goal
-    command = move_arm_conf2conf(robot, [floor, block] + plant_ids,
+    command = move_arm_conf2conf(robot, [floor, block],
                                  conf_i, conf_g)
 
     if (command is None) or (display is None):

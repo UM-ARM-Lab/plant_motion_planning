@@ -251,11 +251,11 @@ def generate_random_plant(num_branches_per_stem, total_num_vert_stems, total_num
 
     global joint_list, base_id
 
+
     # Create plant
     base_id, joint_list, main_stem_indices, base_points, \
     base_pos, link_parent_indices = create_random_plant(num_branches_per_stem, total_num_vert_stems,
                                                                               total_num_extensions, base_pos_xy)
-
 
     # Make plant responsive
     p.setJointMotorControlArray(base_id, joint_list, p.VELOCITY_CONTROL, targetVelocities=len(joint_list) * [0],
@@ -278,7 +278,7 @@ def generate_random_plant(num_branches_per_stem, total_num_vert_stems, total_num
     return base_id, base_rep, joint_list, base_id
 
 
-def load_plant_from_urdf(plant_urdf_name=None, plant_params_name=None):
+def load_plant_from_urdf(plant_urdf_name=None, plant_params_name=None, base_pos_offset_xy=None):
 
     global joint_list, base_id
 
@@ -300,11 +300,17 @@ def load_plant_from_urdf(plant_urdf_name=None, plant_params_name=None):
     # print(joint_list)
 
     pyb_tools_utils.set_pose(base_id, pyb_tools_utils.Pose(
-        pyb_tools_utils.Point(x=base_pos[0], y=base_pos[1], z=base_pos[2])))
+        pyb_tools_utils.Point(x=base_pos[0] + base_pos_offset_xy[0], y=base_pos[1] + base_pos_offset_xy[1],
+                              z=base_pos[2])))
 
     # Make plant responsive
     p.setJointMotorControlArray(base_id, joint_list, p.VELOCITY_CONTROL, targetVelocities=len(joint_list) * [0],
                                 forces=len(joint_list) * [1e-1])  # make plant responsive to external force
+
+    # Offset base points
+    for base_points_key in base_points:
+        base_points[base_points_key][0] += base_pos_offset_xy[0]
+        base_points[base_points_key][1] += base_pos_offset_xy[1]
 
     # Characterize plant
     base_rep = CharacterizePlant(base_id, base_points, main_stem_indices)

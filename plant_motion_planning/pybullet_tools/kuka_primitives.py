@@ -18,7 +18,7 @@ from .utils import get_pose, set_pose, get_movable_joints, \
     plan_joint_motion_with_angle_contraints_v3, plan_joint_motion_with_angle_contraints_v4, \
     plan_joint_motion_with_angle_constraints_v5, plan_joint_motion_with_controls, \
     plan_joint_motion_with_angle_contraints_v6, plan_joint_motion_with_angle_contraints_v7, \
-    plan_joint_motion_single_plant
+    plan_joint_motion_single_plant, plan_joint_motion_with_angle_contraints_multi_world
 
 # from plant_motion_planning.utils import compute_total_cost, compute_path_cost
 
@@ -440,11 +440,11 @@ class Command(object):
                         print("Error! Deflection limit exceeded!")
                         deflection_over_limit = deflection_over_limit + (b.deflection - deflection_limit)
 
-                        import pickle
-                        with open('path_smoothed.pkl', 'wb') as f:
-                            pickle.dump([path.body_paths[0].path], f)
-
-                        input("")
+                        # import pickle
+                        # with open('path_smoothed.pkl', 'wb') as f:
+                        #     pickle.dump([path.body_paths[0].path], f)
+                        #
+                        # input("")
 
                 print("========================================")
 
@@ -976,6 +976,7 @@ def get_free_motion_gen_single_plant(robot, fixed=[], teleport=False, self_colli
         else:
             conf1.assign_with_controls_old()
             obstacles = fixed + assign_fluent_state(fluents)
+
             path = plan_joint_motion_single_plant(robot, conf2.joints, conf2.configuration, obstacles=obstacles,
                                                    self_collisions=self_collisions)
             if path is None:
@@ -1064,6 +1065,61 @@ def get_free_motion_gen_with_angle_constraints_v4(robot, start_state_id, fixed=[
             return None
         command = Command([BodyPath(robot, path, joints=conf2.joints)])
         return (command,)
+
+    return fn
+
+
+
+def get_free_motion_gen_with_angle_constraints_multi_world(robot, start_state_id, multi_world_env, self_collisions=True):
+
+    """
+    Method to fina a path between two configurations.
+
+    :param robot: Body ID of the robot.
+    :param start_state_id: The saved state ID of the initial state of the environment. This is returned by pybullet
+    when saving the environment.
+    :param fixed: List of entities in our experiment that will be rigid and fixed during the entire simulation.
+    :param movable: List of entities in our experiment that will be allowed to deflect and move. These are the
+    characterization objects that are found during the creation of the plant
+    :param deflection_limit: Maximum deflection limit each link is allowed to deflect.
+    :param self_collisions: Flag that toggles self-collisions during simulation.
+
+    :return: A function that can be used to find a path between two configurations for the given robot and environment.
+    """
+
+    def fn(conf1, conf2):
+        """
+
+        :param conf1: Initial configuration
+        :param conf2: Final configuration
+        :param fluents: fluent states
+
+        :return: A command object that contains the path(s) between the initial and final configurations.
+        """
+
+        # Assign the initial configuration
+        # obstacles = fixed
+
+        # conf1.assign_with_controls()
+        # for env in multi_world_env.envs:
+        #     set_joint_positions(multi_world_env.envs[env].robot, multi_world_env.joints, conf1.configuration)
+        # multi_world_env.step(conf1.configuration)
+
+        multi_world_env.step(conf1.configuration, True)
+
+        # Plan a path between conf1 and conf2
+        # path = plan_joint_motion_with_angle_contraints_v6(robot, start_state_id, conf2.joints, conf2.configuration,
+        #                                                   obstacles=obstacles, movable=movable,
+        #                                                   deflection_limit=deflection_limit,
+        #                                                   self_collisions=self_collisions)
+        path = plan_joint_motion_with_angle_contraints_multi_world(robot, start_state_id, conf2.configuration,
+                                                          multi_world_env, self_collisions=self_collisions)
+
+        if path is None:
+            if DEBUG_FAILURE: wait_if_gui('Free motion failed')
+            return None
+        command = Command([BodyPath(robot, path, joints=conf2.joints)])
+        return (command, )
 
     return fn
 
