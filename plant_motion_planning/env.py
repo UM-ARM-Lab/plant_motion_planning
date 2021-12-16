@@ -1,6 +1,7 @@
 import abc
 import os
 
+import numpy as np
 import pybullet as p
 import plant_motion_planning.pybullet_tools.utils as pyb_tools_utils
 from plant_motion_planning import cfg
@@ -32,7 +33,7 @@ class Environment():
 class SinglePlantEnv(Environment):
 
     def __init__(self, deflection_limit, num_branches_per_stem=None, total_num_vert_stems=None,
-                 total_num_extensions=None, plant_pos_xy=(0, 0), base_offset_xy=(0, 0), loadPath=None, physicsClientId=None):
+                 total_num_extensions=None, plant_pos_xy_limits=((0, 1), (0, 1)), base_offset_xy=(0, 0), loadPath=None, physicsClientId=None, avoid_all=False):
 
         pose_floor = pyb_tools_utils.Pose(pyb_tools_utils.Point(x=base_offset_xy[0], y=base_offset_xy[1], z=0))
         floor = pyb_tools_utils.load_model(os.path.join(cfg.ROOT_DIR, 'models/short_floor.urdf'), pose=pose_floor,
@@ -50,6 +51,10 @@ class SinglePlantEnv(Environment):
         self.robot = pyb_tools_utils.load_model(pyb_tools_utils.DRAKE_IIWA_URDF_EDIT, pose=pose_robot, fixed_base = True) # KUKA_IIWA_URDF | DRAKE_IIWA_URDF
 
         if(loadPath is None):
+
+            plant_pos_xy = [np.random.uniform(low=plant_pos_xy_limits[0][0], high=plant_pos_xy_limits[0][1]),
+                            np.random.uniform(low=plant_pos_xy_limits[1][0], high=plant_pos_xy_limits[1][1])]
+
             self.plant_id, self.plant_rep, self.joint_list, self.base_id = generate_random_plant(num_branches_per_stem,
                                                                     total_num_vert_stems, total_num_extensions,
                                                                                                  (plant_pos_xy[0] + base_offset_xy[0],
@@ -60,6 +65,9 @@ class SinglePlantEnv(Environment):
                                                                                                 os.path.join(loadPath, "plant_params.pkl"), base_offset_xy)
 
         self.fixed = [floor, block]
+        if(avoid_all):
+            self.fixed = self.fixed + [self.plant_id]
+
         self.movable = [self.plant_rep]
 
         self.deflection_limit = deflection_limit
@@ -86,6 +94,14 @@ class SinglePlantEnv(Environment):
                                                                                        custom_limits={},
                                                                                        max_distance=pyb_tools_utils.MAX_DISTANCE,
                                                                                        use_aabb=False, cache=True)
+
+        self.collision_fn_benchmark = pyb_tools_utils.get_collision_fn_with_controls_benchmark_multiworld(self.robot,
+                                                                                                          self.joints,
+                                                                                                          self.fixed, [],
+                                                                                                          True,
+                                                                                                          set(),
+                                                                                                          custom_limits={}, max_distance=pyb_tools_utils.MAX_DISTANCE,
+                                                                                                          use_aabb=False, cache=True)
 
         super(SinglePlantEnv, self).__init__()
 
@@ -148,6 +164,8 @@ class SinglePlantEnv(Environment):
     def constraint_violation_checker_backward(self, q):
         return self.collision_fn_back(q)
 
+    def constraint_violation_checker_benchmark(self, q):
+        return self.collision_fn_benchmark(q)
 
 class MultiPlantWorld(Environment):
     def __init__(self, xs, ys, *args, **kwargs):
@@ -160,6 +178,8 @@ class MultiPlantWorld(Environment):
 
         self.sample_robot = self.envs[(xs[0], ys[0])].robot
         self.joints = self.envs[(xs[0], ys[0])].joints
+        self.fixed = self.envs[(xs[0], ys[0])].fixed
+        self.deflection_limit = self.envs[(xs[0], ys[0])].deflection_limit
 
     # def step(self, action, set_joint_pos=False):
     #     ret = {}
@@ -195,6 +215,7 @@ class MultiPlantWorld(Environment):
         for xy, env in self.envs.items():
 
             if(env.collision_fn(q)):
+
                 return True
 
         return False
@@ -204,6 +225,14 @@ class MultiPlantWorld(Environment):
         for xy, env in self.envs.items():
 
             if (env.collision_fn_back(q)):
+                return True
+
+        return False
+
+    def net_constraint_violation_checker_benchmark(self, q):
+
+        for xy, env in self.envs.items():
+            if (env.collision_fn_benchmark(q)):
                 return True
 
         return False

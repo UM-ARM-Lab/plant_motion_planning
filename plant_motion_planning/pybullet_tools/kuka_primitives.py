@@ -18,7 +18,8 @@ from .utils import get_pose, set_pose, get_movable_joints, \
     plan_joint_motion_with_angle_contraints_v3, plan_joint_motion_with_angle_contraints_v4, \
     plan_joint_motion_with_angle_constraints_v5, plan_joint_motion_with_controls, \
     plan_joint_motion_with_angle_contraints_v6, plan_joint_motion_with_angle_contraints_v7, \
-    plan_joint_motion_single_plant, plan_joint_motion_with_angle_contraints_multi_world
+    plan_joint_motion_single_plant, plan_joint_motion_with_angle_contraints_multi_world, \
+    plan_joint_motion_multiworld_benchmark
 
 # from plant_motion_planning.utils import compute_total_cost, compute_path_cost
 
@@ -493,19 +494,19 @@ class Command(object):
 
 
 
-    def execute_multi_world(self, init_conf, multi_world_env):
+    def execute_multi_world(self, init_conf, multi_world_env, num_worlds=4):
 
         # distance_fn, alpha = cost_utils
 
         total_cost = 0
         total_ee_path_cost = 0
-        deflection_over_limit = 0
+        deflection_over_limit = np.zeros(num_worlds)
         alpha = 0.1
 
-        text_id = []
+        # text_id = []
 
         # text_ori = pybullet.getQuaternionFromEuler([1.57, 0.0, 0.0])
-        text_ori = pybullet.getQuaternionFromEuler([0.62, 0.0, 0.5])
+        # text_ori = pybullet.getQuaternionFromEuler([0.62, 0.0, 0.5])
 
         # pybullet.addUserDebugText("Deflection limit: %0.3f rad" % (multi_world_env.deflection_limit), [-1.95, 1, 1.05],
         #                           textColorRGB=[1, 0, 0])
@@ -517,25 +518,14 @@ class Command(object):
         #         text_id.append(pybullet.addUserDebugText("Deflection of link " + str(e + 1) + ": " + str(deflection),
         #                                                  [-2 - 0.2 * e, 1, 1 - 0.2 * e], textColorRGB=[0, 0, 0]))
 
-        # prev_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
-
-        # set_joint_positions(robot, joints, init_conf)
-        # pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, init_conf,
-        #                                    positionGains=position_gains)
-
-        # single_plant_env.step(init_conf)
-        # for t in range(10):
-        #     s_utils.step_sim_v2()
+        prev_ee_pos = np.array(pybullet.getLinkState(multi_world_env.sample_robot, 9)[0])
 
         multi_world_env.step_after_restoring(init_conf)
 
         print("Executing path...")
 
         for i, body_path in enumerate(self.body_paths):
-            # for j in body_path.iterator():
             for j in body_path.iterator_multi_world(multi_world_env):
-                pass
-                # for j in body_path.iterator_with_control_v2():
 
                 # for pid in plant_id:
                 #    plant_rot_joint_displacement_y, _, plant_hinge_y_reac, _ = pybullet.getJointState(pid, 0)
@@ -549,33 +539,30 @@ class Command(object):
                 #     print("Collision Detected!!")
                 #     exit()
 
-                # for b in single_plant_env.movable:
-                #     b.observe_all()
-                #
-                #     for e, deflection in enumerate(b.deflections):
-                #         pybullet.addUserDebugText("Deflection of link " + str(e + 1) + ": %.3f rad" % (deflection),
-                #                                   [-2 - 0.07 * e, 1, 1 - 0.07 * e], textColorRGB=[0, 0, 0],
-                #                                   replaceItemUniqueId=text_id[e])
-                #
-                #         print("Deflection of plant %d: %f" % (e, deflection))
-                #
-                #         if (deflection > single_plant_env.deflection_limit):
-                #             print("Error! Deflection limit exceeded!")
-                #             deflection_over_limit = deflection_over_limit + (deflection - single_plant_env.deflection_limit)
-                #
-                #             # import pickle
-                #             # with open('path_smoothed.pkl', 'wb') as f:
-                #             #     pickle.dump([path.body_paths[0].path], f)
-                #             #
-                #             # input("")
-                #
-                # print("========================================")
+                for e_env, env_item in enumerate(multi_world_env.envs.items()):
 
-                # cur_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
+                    xy, env = env_item
 
-                # total_ee_path_cost = total_ee_path_cost + np.linalg.norm(cur_ee_pos - prev_ee_pos)
+                    print("Environment: ", e_env)
 
-                # prev_ee_pos = cur_ee_pos
+                    for b in env.movable:
+                        b.observe_all()
+
+                        for e, deflection in enumerate(b.deflections):
+
+                            print("\tDeflection of plant %d: %f" % (e, deflection))
+
+                            if (deflection > multi_world_env.deflection_limit):
+                                print("Error! Deflection limit exceeded!")
+                                deflection_over_limit[e_env] = deflection_over_limit[e_env] + (deflection - multi_world_env.deflection_limit)
+
+                    print("========================================")
+
+                cur_ee_pos = np.array(pybullet.getLinkState(multi_world_env.sample_robot, 9)[0])
+
+                total_ee_path_cost = total_ee_path_cost + np.linalg.norm(cur_ee_pos - prev_ee_pos)
+
+                prev_ee_pos = cur_ee_pos
 
                 # for t in range(23):
                 #    pybullet.stepSimulation()
@@ -584,15 +571,15 @@ class Command(object):
                 # wait_for_duration(time_step)
                 # wait_if_gui("press enter to move to next step")
 
-        # total_cost = total_ee_path_cost + (alpha * deflection_over_limit)
-        #
-        # print("====================================================")
-        # print("total path cost: ", total_ee_path_cost)
-        # print("total Deflection over limit: ", deflection_over_limit)
-        # print("alpha: ", alpha)
-        # print("====================================================")
-        # print("Total cost: ", total_cost)
-        # print("====================================================")
+        total_cost = total_ee_path_cost + (alpha * deflection_over_limit)
+
+        print("====================================================")
+        print("total path cost: ", total_ee_path_cost)
+        print("total Deflection over limit: ", deflection_over_limit)
+        print("alpha: ", alpha)
+        print("====================================================")
+        print("Total cost: ", total_cost)
+        print("====================================================")
 
 
     def execute_with_controls_v3(self, robot, init_conf, single_plant_env):
@@ -1101,6 +1088,27 @@ def get_free_motion_gen_single_plant(robot, fixed=[], teleport=False, self_colli
             obstacles = fixed + assign_fluent_state(fluents)
 
             path = plan_joint_motion_single_plant(robot, conf2.joints, conf2.configuration, obstacles=obstacles,
+                                                   self_collisions=self_collisions)
+            if path is None:
+                if DEBUG_FAILURE: wait_if_gui('Free motion failed')
+                return None
+        command = Command([BodyPath(robot, path, joints=conf2.joints)])
+        return (command,)
+    return fn
+
+
+
+def get_free_motion_gen_multiworld_benchmark(robot, fixed, multi_world_env, teleport=False, self_collisions=True):
+    def fn(conf1, conf2, fluents=[]):
+        assert ((conf1.body == conf2.body) and (conf1.joints == conf2.joints))
+        if teleport:
+            path = [conf1.configuration, conf2.configuration]
+        else:
+            # conf1.assign_with_controls()
+            multi_world_env.step(conf1.configuration)
+            # obstacles = fixed + assign_fluent_state(fluents)
+            path = plan_joint_motion_multiworld_benchmark(robot, conf2.joints, conf2.configuration, multi_world_env,
+                                                   obstacles=fixed,
                                                    self_collisions=self_collisions)
             if path is None:
                 if DEBUG_FAILURE: wait_if_gui('Free motion failed')

@@ -14,7 +14,7 @@ from .rrt import rrt
 from .rrt_star import rrt_star
 
 from .smoothing import smooth_path, smooth_path_v2, smooth_path_v4, smooth_path_with_controls, smooth_path_v6, \
-    smooth_path_v7, smooth_path_single_plant, smooth_path_multi_world
+    smooth_path_v7, smooth_path_single_plant, smooth_path_multi_world, smooth_path_multiworld_benchmark
 from .utils import RRT_RESTARTS, RRT_SMOOTHING, INF, irange, elapsed_time, compute_path_cost, default_selector
 
 
@@ -85,6 +85,53 @@ def random_restarts_single_plant(solve_fn, robot, start, goal, distance_fn, samp
         print("Path found! Press enter to start smoothing...")
 
         path = smooth_path_single_plant(path, robot, extend_fn, collision_fn, max_iterations=smooth,
+                                         max_time=max_time-elapsed_time(start_time))
+        solutions.append(path)
+        if compute_path_cost(path, distance_fn) < success_cost:
+            break
+    solutions = sorted(solutions, key=lambda path: compute_path_cost(path, distance_fn))
+    print('Solutions ({}): {} | Time: {:.3f}'.format(len(solutions), [(len(path), round(compute_path_cost(
+        path, distance_fn), 3)) for path in solutions], elapsed_time(start_time)))
+    return solutions
+
+
+
+def random_restarts_multiworld_benchmark(solve_fn, multi_world_env, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
+                                  restarts=RRT_RESTARTS, smooth=RRT_SMOOTHING,
+                                  success_cost=0., max_time=INF, max_solutions=1, **kwargs):
+    """
+    :param start: Start configuration - conf
+    :param goal: End configuration - conf
+    :param distance_fn: Distance function - distance_fn(q1, q2)->float
+    :param sample_fn: Sample function - sample_fn()->conf
+    :param extend_fn: Extension function - extend_fn(q1, q2)->[q', ..., q"]
+    :param collision_fn: Collision function - collision_fn(q)->bool
+    :param max_time: Maximum runtime - float
+    :param kwargs: Keyword arguments
+    :return: Paths [[q', ..., q"], [[q'', ..., q""]]
+    """
+    start_time = time.time()
+    solutions = []
+    # path = check_direct_with_controls(robot, start, goal, extend_fn, collision_fn)
+    # if path is False:
+    #     return None
+    # if path is not None:
+    #     solutions.append(path)
+
+
+    for attempt in irange(restarts + 1):
+        if (len(solutions) >= max_solutions) or (elapsed_time(start_time) >= max_time):
+            break
+        attempt_time = (max_time - elapsed_time(start_time))
+        path = solve_fn(multi_world_env, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
+                        max_time=attempt_time, **kwargs)
+        if path is None:
+            continue
+
+        # input("Path found! Press enter to start smoothing...")
+        print("Path found! Press enter to start smoothing...")
+
+        path = smooth_path_multiworld_benchmark(path, multi_world_env, extend_fn, collision_fn, max_iterations=smooth,
                                          max_time=max_time-elapsed_time(start_time))
         solutions.append(path)
         if compute_path_cost(path, distance_fn) < success_cost:
@@ -179,7 +226,7 @@ def random_restarts_multi_world(solve_fn, start_state_id, start, goal, distance_
     #     solutions.append(path)
 
     smooth_attempts = 5
-    max_iterations_per_smoothing = 10
+    max_iterations_per_smoothing = 15
 
     # for attempt in irange(restarts + 1):
 
@@ -386,13 +433,14 @@ def random_restarts_v7(solve_fn, robot, start_state_id, start, goal, distance_fn
             print("=====================================")
             plant_motion_planning.pybullet_tools.utils.restore_state(start_state_id)
 
-            plant_motion_planning.pybullet_tools.utils.set_joint_positions(robot, single_plant_env.joints, start)
-            pybullet.setJointMotorControlArray(robot, single_plant_env.joints, pybullet.POSITION_CONTROL, start,
-                                               positionGains=7 * [0.01])
+            # plant_motion_planning.pybullet_tools.utils.set_joint_positions(robot, single_plant_env.joints, start)
+            # pybullet.setJointMotorControlArray(robot, single_plant_env.joints, pybullet.POSITION_CONTROL, start,
+            #                                    positionGains=7 * [0.01])
 
-            for t in range(2):
-                s_utils.step_sim_v2()
-                single_plant_env.step(start)
+            # for t in range(2):
+            #     s_utils.step_sim_v2()
+            #     single_plant_env.step(start)
+            single_plant_env.step(start)
 
             # input("press enter to check the forward path!")
             print("press enter to check the forward path!")

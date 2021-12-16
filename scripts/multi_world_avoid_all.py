@@ -16,7 +16,7 @@ import numpy as np
 import pybullet_data
 
 from plant_motion_planning import cfg
-from plant_motion_planning.env import SinglePlantEnv
+from plant_motion_planning.env import SinglePlantEnv, MultiPlantWorld
 from plant_motion_planning.planner import Planner
 from plant_motion_planning.pybullet_tools.kuka_primitives import BodyConf, Command, get_free_motion_gen_with_angle_constraints_v6
 from plant_motion_planning.pybullet_tools.utils import enable_gravity, connect, dump_world, set_pose, \
@@ -33,54 +33,10 @@ import argparse
 parser = argparse.ArgumentParser(description='')
 parser.add_argument("--video_filename", type=str, help="File name of video file to record planning with full path",
                     default=None)
-parser.add_argument("--env", type=str, help="Name of environment to be used", default=None)
 parser.add_argument("--deflection_limit", type=float, help="Maximum amount of deflection to be permitted", default=None)
 parser.add_argument("--plant_filename", type=str, help="Path to locations of plant model files",
                     default=None)
 args = parser.parse_args()
-
-
-def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g):
-    """
-    Method to find a path between conf_i and conf_g
-
-    :param:
-        robot: Body ID of robot returned by pybullet
-        fixed: Body IDs of entities that are fixed during simulation. These are the objects that collision will be
-        checked against.
-        movable: Characterization objects of the plants
-        deflection_limit: The maximum amount of deflection each link of the plant can undergo
-        conf_i: BodyConf object denoting the initial configuration
-        conf_g: BodyConf object denotion the final or goal configuration
-
-    :return:
-        A Command object that contains the path(s) from conf_i to conf_g if a path exists. Else, if no path exists, it
-        return None.
-    """
-
-    # Save the initial state of simulation
-    start_state_id = save_state()
-
-    # A motion planner function that will be used to find a path
-    free_motion_fn = get_free_motion_gen_with_angle_constraints_v6(robot, start_state_id, fixed= fixed,
-                                                                   movable = movable,
-                                                                   deflection_limit = deflection_limit)
-
-    # Number of attempts at finding a path between conf_i and conf_g
-    num_attempts = 200
-
-    path = []
-    for attempt in range(num_attempts):
-
-        result = free_motion_fn(conf_i, conf_g)
-
-        if result is None or result[0] is None:
-            continue
-        else:
-            path, = result
-            return Command(path.body_paths)
-
-    return None
 
 
 # Initial configuration of the Arm
@@ -106,15 +62,16 @@ def main(display='execute'): # control | execute | step
     disable_real_time()
 
     # Set camera pose to desired position and orientation
-    set_camera_pose((0.0, -1.06, 1.5),(0,0,0))
+    set_camera_pose((2.5, -1.06, 3.5), (2.5,2.5,0))
 
     p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
 
     # Draw X, Y, Z axes
     draw_global_system()
 
-    np.random.seed(2)
-    random.seed(2)
+    # Initialize random generator
+    np.random.seed(19)
+    random.seed(19)
 
     # Generate a new plant whose number of branches, number of stems, natural deflections etc. are randomly sampled
     num_branches_per_stem = 1
@@ -133,10 +90,11 @@ def main(display='execute'): # control | execute | step
     deflection_limit = 0.30
 
     # Base position in (X, Y)
-    plant_pos_xy = [np.random.uniform(low=0, high=0.35), np.random.uniform(low=-0.5, high=0.0)]
+    plant_pos_xy_limits = ((0.2, 0.35), (-0.5, 0.0))
     # print("Base position: ", base_pos_xy)
     # base_pos_xy = (0, 0)
-    base_offset_xy = (0, 0)
+    base_offset_xs = (0, 5)
+    base_offset_ys = (0, 5)
 
     # fixed = [floor, block]
 
@@ -145,15 +103,28 @@ def main(display='execute'): # control | execute | step
     #                                   total_num_extensions, base_pos_xy, base_offset_xy)
 
     # Load plant from urdf file
-    single_plant_env = SinglePlantEnv(deflection_limit, base_offset_xy=base_offset_xy,
-                                      loadPath=args.plant_filename)
+    # single_plant_env = SinglePlantEnv(deflection_limit, base_offset_xy=base_offset_xy,
+    #                                   loadPath=args.plant_filename)
+
+    # Generate random plant for each world
+    multi_world_env = MultiPlantWorld(base_offset_xs, base_offset_ys, deflection_limit, num_branches_per_stem, total_num_vert_stems,
+                                      total_num_extensions, plant_pos_xy_limits, physicsClientId=cli, avoid_all=True)
+
+    # Load model for debugging
+    # multi_world_env = MultiPlantWorld(base_offset_xs, base_offset_ys, deflection_limit, loadPath=args.plant_filename, avoid_all=True)
+
+    # Initialize random generator
+    np.random.seed()
+    random.seed()
 
     planner = Planner()
 
     saved_world = p.saveState()
 
-    planner.move_arm_conf2conf(init_conf, goal_conf, single_plant_env)
+    planner.move_arm_conf2conf_multi_world_benchmark(init_conf, goal_conf, multi_world_env, saved_world)
     print("Planning completed!")
+
+    # input()
 
     p.restoreState(saved_world)
     update_state()
@@ -163,7 +134,7 @@ def main(display='execute'): # control | execute | step
         log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4, fileName=args.video_filename)
 
     # TODO: Execution...
-    planner.execute_path(single_plant_env)
+    planner.execute_path_multi_world(multi_world_env)
     print("execution completed!")
 
     # shutting down logger

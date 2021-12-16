@@ -312,6 +312,7 @@ def load_plant_from_urdf(plant_urdf_name=None, plant_params_name=None, base_pos_
         base_points[base_points_key][1] += base_pos_offset_xy[1]
 
     # Characterize plant
+    # base_rep = CharacterizePlant2(base_id, base_points, main_stem_indices, None)
     base_rep = CharacterizePlant(base_id, base_points, main_stem_indices)
 
     return base_id, base_rep, joint_list, base_id
