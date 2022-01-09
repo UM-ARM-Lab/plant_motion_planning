@@ -20,6 +20,7 @@ used to carry out these tasks. Planning under uncertainty was also considered to
 - Install the PyBullet simulator: [PyBullet](https://github.com/bulletphysics/bullet3).
 - Download this repository by executing:
 ```git clone ...```
+- Install dependent libraries using: ```pip3 install -e .```
 
 ## Usage
 - To run the planning algorithm on a randomly generated single-world environment with a single-stemmed plant, run the
