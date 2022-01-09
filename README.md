@@ -34,7 +34,8 @@ and add respective arguments as directed in the help prompt.
 - To run the planning algorithm on a randomly generated multi-world environment with a multi-branched plant, run the
 following command:
 ```python -m scripts.multi_world_our_method -h```
-and add respective arguments as directed in the help prompt. 
+and add respective arguments as directed in the help prompt. To test some sample environments,
+use the default seeds in the program.
 
 
 ## Scripts
