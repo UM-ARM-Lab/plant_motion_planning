@@ -5,3 +5,4 @@ plant_motion_planning.egg-info/
 plant_motion_planning/__pycache__/
 plant_motion_planning/motion_planners/motion_planners/__pycache__/
 plant_motion_planning/pybullet_tools/__pycache__/
+visualShapeBench.json_0.json
