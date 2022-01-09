@@ -51,10 +51,6 @@ goal_conf = (-1.3871757013351371, 1.6063773991870438, 2.152853076950719, -1.0638
 def main():
     """
     Main function of this program.
-
-    :param:
-        display: Type of execution of the program. eg. full path execution, step by step execution etc.
-    :return: -
     """
 
     # GUI connection client object
@@ -126,7 +122,6 @@ def main():
     if(args.video_filename != None):
         log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4, fileName=args.video_filename)
 
-    # TODO: Execution...
     planner.execute_path_multi_world(multi_world_env)
     print("execution completed!")
 

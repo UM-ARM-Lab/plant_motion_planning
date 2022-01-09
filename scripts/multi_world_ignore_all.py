@@ -45,10 +45,6 @@ goal_conf = (-1.3871757013351371, 1.6063773991870438, 2.152853076950719, -1.0638
 def main():
     """
     Main function of this program.
-
-    :param:
-        display: Type of execution of the program. eg. full path execution, step by step execution etc.
-    :return: -
     """
 
     # GUI connection client object
