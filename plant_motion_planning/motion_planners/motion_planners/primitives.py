@@ -154,12 +154,12 @@ def extend_towards_multiworld_benchmark(tree, target, distance_fn, extend_fn, co
     return last, success
 
 def extend_towards_with_controls(tree, target, distance_fn, extend_fn, collision_fn, robot, swap=False, tree_frequency=1):
-    assert tree_frequency >= 1
+    
+    """
+    Function to perform extension operation toward target node.
+    """
 
-    # print("Target: ",target, "Target configuration displayed...")
-    # joints = pyb_tools_utils.get_movable_joints(robot)
-    # pyb_tools_utils.set_joint_positions(robot, joints, target)
-    # input("press enter to continue...")
+    assert tree_frequency >= 1
 
 
     # Find the nearest node and restore its simulation state
@@ -173,38 +173,17 @@ def extend_towards_with_controls(tree, target, distance_fn, extend_fn, collision
     pyb_tools_utils.set_joint_positions(robot, pyb_tools_utils.get_movable_joints(robot), extend[0])
     pybullet.setJointMotorControlArray(robot, pyb_tools_utils.get_movable_joints(robot), pybullet.POSITION_CONTROL, extend[0],
                                        positionGains=7 * [0.01])
-    # for t in range(15):
-    #     s_utils.step_sim()
     for t in range(15):
         s_utils.step_sim_v2()
 
 
-
     safe = []
-    # node_state = []
     for node in extend:
 
-        # pyb_tools_utils.step_simulation()
-        # for t in range(15):
-        #     s_utils.step_sim()
-
-        # print("+++++++++++++++++++++++++++++++++++++++++++++++++")
-        # print("is_collision?", collision_fn(node))
-
         if not collision_fn(node):
-            # print("--------- safe --------------")
-            # node_state.append(pyb_tools_utils.save_state())
             safe.append(node)
         else:
-            # print("--------- collision --------------")
             break
-
-        # for e,b in enumerate(movable):
-        #     b.observe
-        #     print(f"plant {e} deflection: {b.deflection}")
-
-        # print("+++++++++++++++++++++++++++++++++++++++++++++++++")
-        # input("")
 
     for i, q in enumerate(safe):
         if (i % tree_frequency == 0) or (i == len(safe) - 1):

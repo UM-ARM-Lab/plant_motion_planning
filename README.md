@@ -7,8 +7,7 @@ project pursued at [ARM Lab](https://arm.eecs.umich.edu/),
 build a planning algorithm capable of moving an arm gently through plants to reach
 a certain joint configuration. At a higher level, this algorithm was focused towards
 applications such as produce harvesting and weed removal, where a manipulator can be
-used to carry out these tasks. A report describing this project can be found 
-[here]().
+used to carry out these tasks. Planning under uncertainty was also considered to incorporate the unpredictability of the real world.
 
 
 ## Requirements
@@ -18,17 +17,26 @@ used to carry out these tasks. A report describing this project can be found
 
 
 ## Installation
-- [TODO] explain about dependency installation
-- Install this repository by executing:
+- Install the PyBullet simulator: [PyBullet](https://github.com/bulletphysics/bullet3).
+- Download this repository by executing:
 ```git clone ...```
 
 ## Usage
-- To run the planning algorithm on a randomly generated environment, run the
+- To run the planning algorithm on a randomly generated single-world environment with a single-stemmed plant, run the
+following command:
+```python -m scripts.out_method_v4 -h```
+and add respective arguments as directed in the help prompt. 
+- To run the planning algorithm on a randomly generated single-world environment with a multi-branched plant, run the
 following command:
 ```python -m scripts.out_method_v6 -h```
 and add respective arguments as directed in the help prompt. 
+- To run the planning algorithm on a randomly generated multi-world environment with a multi-branched plant, run the
+following command:
+```python -m scripts.multi_world_our_method -h```
+and add respective arguments as directed in the help prompt. 
+
 
 ## Scripts
 All scripts used to execute the program can be found in the ```scripts``` folder.
-The python scripts be run for testing of small scale tasks, but the bash scripts can
+The python scripts can be run for testing a few test cases, but the bash scripts can
 be used for running a large number of similar test cases. 

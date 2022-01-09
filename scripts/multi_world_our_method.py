@@ -11,6 +11,7 @@ single stem implementation.
 from __future__ import print_function
 
 import random
+import time
 
 import numpy as np
 import pybullet_data
@@ -40,49 +41,6 @@ parser.add_argument("--plant_filename", type=str, help="Path to locations of pla
 args = parser.parse_args()
 
 
-def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g):
-    """
-    Method to find a path between conf_i and conf_g
-
-    :param:
-        robot: Body ID of robot returned by pybullet
-        fixed: Body IDs of entities that are fixed during simulation. These are the objects that collision will be
-        checked against.
-        movable: Characterization objects of the plants
-        deflection_limit: The maximum amount of deflection each link of the plant can undergo
-        conf_i: BodyConf object denoting the initial configuration
-        conf_g: BodyConf object denotion the final or goal configuration
-
-    :return:
-        A Command object that contains the path(s) from conf_i to conf_g if a path exists. Else, if no path exists, it
-        return None.
-    """
-
-    # Save the initial state of simulation
-    start_state_id = save_state()
-
-    # A motion planner function that will be used to find a path
-    free_motion_fn = get_free_motion_gen_with_angle_constraints_v6(robot, start_state_id, fixed= fixed,
-                                                                   movable = movable,
-                                                                   deflection_limit = deflection_limit)
-
-    # Number of attempts at finding a path between conf_i and conf_g
-    num_attempts = 200
-
-    path = []
-    for attempt in range(num_attempts):
-
-        result = free_motion_fn(conf_i, conf_g)
-
-        if result is None or result[0] is None:
-            continue
-        else:
-            path, = result
-            return Command(path.body_paths)
-
-    return None
-
-
 # Initial configuration of the Arm
 init_conf = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 # Final configuration of the Arm
@@ -90,7 +48,7 @@ goal_conf = (-1.3871757013351371, 1.6063773991870438, 2.152853076950719, -1.0638
              1.9391079682303638, -1.051507203470595)
 
 
-def main(display='execute'): # control | execute | step
+def main():
     """
     Main function of this program.
 
@@ -113,53 +71,44 @@ def main(display='execute'): # control | execute | step
     # Draw X, Y, Z axes
     draw_global_system()
 
-    # Initialize random generator
+    # Example environments... (Uncomment one of them and comment others to use)
+    # Env 1
+    # Initializing random generator
     np.random.seed(1)
     random.seed(1)
+    # Base position in X and Y
+    plant_pos_xy_limits = ((0, 0.35), (-0.5, 0.0))
+
+
+    # Env2
+    # np.random.seed(19)
+    # random.seed(19)
+    # plant_pos_xy_limits = ((0.2, 0.35), (-0.5, 0.0))
+
+
+    # Env 3
+    # np.random.seed(2)
+    # random.seed(2)
+    # plant_pos_xy_limits = ((0, 0.35), (-0.5, 0.0))
+
 
     # Generate a new plant whose number of branches, number of stems, natural deflections etc. are randomly sampled
     num_branches_per_stem = 1
     total_num_vert_stems = 2
     total_num_extensions = 1
-    # base_pos_xy = [np.random.uniform(low=0, high=0.35),np.random.uniform(low=-0.5, high=0.0)]
-    # # base_pos_xy = [0.4, 0.4]
-    # plant_id, plant_rep = generate_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_extensions,
-    #                                             base_pos_xy, physicsClientId=cli)
-
-
-    # joints = get_movable_joints(robot)
-    # set_joint_positions(robot, joints, goal_conf)
 
     # initialize deflection limit from arguments input
     deflection_limit = 0.30
 
-    # Base position in (X, Y)
-    # plant_pos_xy = [np.random.uniform(low=0, high=0.35), np.random.uniform(low=-0.5, high=0.0)]
-    plant_pos_xy_limits = ((0, 0.35), (-0.5, 0.0))
-    # print("Base position: ", base_pos_xy)
-    # base_pos_xy = (0, 0)
+    # Base offset X and Y
     base_offset_xs = (0, 5)
     base_offset_ys = (0, 5)
-
-    # fixed = [floor, block]
-
-    # Generate a new random plant
-    # single_plant_env = SinglePlantEnv(deflection_limit, num_branches_per_stem, total_num_vert_stems,
-    #                                   total_num_extensions, base_pos_xy, base_offset_xy)
-
-    # Load plant from urdf file
-    # single_plant_env = SinglePlantEnv(deflection_limit, base_offset_xy=base_offset_xy,
-    #                                   loadPath=args.plant_filename)
 
     # Generate random plant for each world
     multi_world_env = MultiPlantWorld(base_offset_xs, base_offset_ys, deflection_limit, num_branches_per_stem, total_num_vert_stems,
                                       total_num_extensions, plant_pos_xy_limits, physicsClientId=cli)
 
-    # Load model for debugging
-    # multi_world_env = MultiPlantWorld(base_offset_xs, base_offset_ys, deflection_limit, loadPath=args.plant_filename)
-
-    # input()
-
+    # Reinitialize random generator
     np.random.seed()
     random.seed()
 
@@ -189,4 +138,4 @@ def main(display='execute'): # control | execute | step
     disconnect()
 
 if __name__ == '__main__':
-    main(display = "angle_step")
+    main()

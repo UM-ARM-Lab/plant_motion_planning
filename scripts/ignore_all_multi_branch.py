@@ -1,5 +1,9 @@
 #l!/usr/bin/env python
 
+"""
+This program finds a path between initial and final goal configurations while ignoring all plant deflections for a multi-branch plant scenario.
+"""
+
 from __future__ import print_function
 
 import numpy as np
@@ -67,7 +71,7 @@ init_conf = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 goal_conf = (-1.3871757013351371, 1.6063773991870438, 2.152853076950719, -1.0638334445672613, -0.1398096715085235,
              1.9391079682303638, -1.051507203470595)
 
-def main(display='execute'): # control | execute | step
+def main():
     """
     Main function of this program.
 
@@ -115,7 +119,7 @@ def main(display='execute'): # control | execute | step
 
     dump_world()
 
-    input()
+    # input()
 
     # initialize deflection limit from arguments input
     deflection_limit = args.deflection_limit
@@ -132,7 +136,7 @@ def main(display='execute'): # control | execute | step
     # any angle
     command = move_arm_conf2conf(robot, [floor, block], conf_i, conf_g)
 
-    if (command is None) or (display is None):
+    if (command is None):
         print('Unable to find a plan!')
         print("*********************************************************")
         return
@@ -145,23 +149,8 @@ def main(display='execute'): # control | execute | step
     if (args.video_filename != None):
         log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4, fileName=args.video_filename)
 
-    # Poll the value of display and execute accordingly
-    if display == 'control':
-        enable_gravity()
-        command.control(real_time=False, dt=0)
-    elif display == 'execute':
-        command.refine(num_steps=10).execute(time_step=0.005)
-    elif display == 'step':
-        command.step()
-    elif display == 'angle_step':
-        # command.execute_with_movable_plant_angle_constraint(robot, block, plant_ids, plant_representations,
-        #                                                     deflection_limit)
-        # command.execute_with_controls(robot, init_conf, block, plant_ids, plant_representations,
-        #                                                     deflection_limit)
-        command.execute_with_controls_v2(robot, init_conf, [plant_rep],
+    command.execute_with_controls_v2(robot, init_conf, [plant_rep],
                                          deflection_limit)
-    else:
-        raise ValueError(display)
 
     print('Quitting simulation')
 
@@ -172,4 +161,4 @@ def main(display='execute'): # control | execute | step
 
 
 if __name__ == '__main__':
-    main("angle_step")
+    main()

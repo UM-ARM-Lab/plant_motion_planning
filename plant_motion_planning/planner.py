@@ -10,15 +10,7 @@ from plant_motion_planning.pybullet_tools.utils import save_state
 
 class Planner():
 
-    # def __init__(self, env: Environment, robot):
     def __init__(self):
-
-        # self.env = environment()
-        # self.robot = robot
-        # self.fixed = fixed
-        # self.movable = movable
-        # self.deflection_limit = deflection_limit
-        # self.plant = singlePlantEnv()
 
         self.conf1 = None
         self.conf2 = None
@@ -43,7 +35,6 @@ class Planner():
             return None.
         """
 
-        # TODO: Planning...
         # Create a BodyConf object with the initial configuration stored in it
         self.conf1 = BodyConf(single_plant_env.robot, configuration=init_conf)
         # Create a BodyConf object with the final or end configuration stored in it
@@ -53,10 +44,6 @@ class Planner():
         start_state_id = save_state()
 
         # A motion planner function that will be used to find a path
-        # free_motion_fn = get_free_motion_gen_with_angle_constraints_v6(robot, start_state_id, fixed= fixed,
-        #                                                                movable = movable,
-        #                                                                deflection_limit = deflection_limit,
-        #                                                                single_plant_env = single_plant_env)
         free_motion_fn = get_free_motion_gen_with_angle_constraints_v7(single_plant_env.robot, start_state_id,
                                                                        single_plant_env)
 
@@ -81,23 +68,9 @@ class Planner():
 
     def move_arm_conf2conf_multi_world(self, init_conf, goal_conf, multi_world_env):
         """
-        Method to find a path between conf_i and conf_g
-
-        :param:
-            robot: Body ID of robot returned by pybullet
-            fixed: Body IDs of entities that are fixed during simulation. These are the objects that collision will be
-            checked against.
-            movable: Characterization objects of the plants
-            deflection_limit: The maximum amount of deflection each link of the plant can undergo
-            conf_i: BodyConf object denoting the initial configuration
-            conf_g: BodyConf object denotion the final or goal configuration
-
-        :return:
-            A Command object that contains the path(s) from conf_i to conf_g if a path exists. Else, if no path exists, it
-            return None.
+        Method to find a path between init_conf and goal_conf
         """
 
-        # TODO: Planning...
         # Create a BodyConf object with the initial configuration stored in it
         self.conf1 = BodyConf(multi_world_env.sample_robot, configuration=init_conf)
         # Create a BodyConf object with the final or end configuration stored in it
@@ -107,10 +80,6 @@ class Planner():
         start_state_id = save_state()
 
         # A motion planner function that will be used to find a path
-        # free_motion_fn = get_free_motion_gen_with_angle_constraints_v6(robot, start_state_id, fixed= fixed,
-        #                                                                movable = movable,
-        #                                                                deflection_limit = deflection_limit,
-        #                                                                single_plant_env = single_plant_env)
         free_motion_fn = get_free_motion_gen_with_angle_constraints_multi_world(multi_world_env.sample_robot, start_state_id,
                                                                        multi_world_env)
 
@@ -134,18 +103,7 @@ class Planner():
 
     def move_arm_conf2conf_multi_world_benchmark(self, init_conf, goal_conf, multi_world_env, start_state_id):
         """
-        Method to find a path between conf_i and conf_g
-
-        :param:
-            robot: Body ID of robot returned by pybullet
-            fixed: Body IDs of entities that are fixed during simulation. These are the objects that collision will be
-            checked against.
-            conf_i: BodyConf object denoting the initial configuration
-            conf_g: BodyConf object denotion the final or goal configuration
-
-        :return:
-            A Command object that contains the path(s) from conf_i to conf_g if a path exists. Else, if no path exists, it
-            return None.
+        Method to find a path between init_conf and goal_conf
         """
 
         # Create a BodyConf object with the initial configuration stored in it

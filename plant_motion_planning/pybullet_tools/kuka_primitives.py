@@ -15,10 +15,10 @@ from .utils import get_pose, set_pose, get_movable_joints, \
     step_simulation, refine_path, plan_direct_joint_motion, get_joint_positions, wait_if_gui, flatten, \
     pairwise_contact, plan_joint_motion_with_angle_contraints, \
     plan_joint_motion2, plan_joint_motion_with_angle_contraints_v2, \
-    plan_joint_motion_with_angle_contraints_v3, plan_joint_motion_with_angle_contraints_v4, \
+    plan_joint_motion_with_angle_contraints_v3, plan_joint_motion_with_angle_constraints_v4, \
     plan_joint_motion_with_angle_constraints_v5, plan_joint_motion_with_controls, \
-    plan_joint_motion_with_angle_contraints_v6, plan_joint_motion_with_angle_contraints_v7, \
-    plan_joint_motion_single_plant, plan_joint_motion_with_angle_contraints_multi_world, \
+    plan_joint_motion_with_angle_constraints_v6, plan_joint_motion_with_angle_constraints_v7, \
+    plan_joint_motion_single_plant, plan_joint_motion_with_angle_constraints_multi_world, \
     plan_joint_motion_multiworld_benchmark
 
 # from plant_motion_planning.utils import compute_total_cost, compute_path_cost
@@ -401,8 +401,6 @@ class Command(object):
     def execute_with_controls(self,robot, init_conf, block, plant_id = [], movable = [],
                                                     deflection_limit = 0, time_step=0.05):
 
-        # distance_fn, alpha = cost_utils
-
         total_cost = 0
         total_ee_path_cost = 0
         deflection_over_limit = 0
@@ -410,7 +408,6 @@ class Command(object):
 
         text_id = []
 
-        # text_ori = pybullet.getQuaternionFromEuler([1.57, 0.0, 0.0])
         text_ori = pybullet.getQuaternionFromEuler([0.62, 0.0, 0.5])
 
         pybullet.addUserDebugText("Deflection limit: %0.3f rad" % (deflection_limit), [-1.95, 1, 1.05], textColorRGB=[1, 0, 0])
@@ -432,21 +429,8 @@ class Command(object):
             s_utils.step_sim()
 
         for i, body_path in enumerate(self.body_paths):
-            # for j in body_path.iterator():
             for j in body_path.iterator_with_control():
 
-
-                #for pid in plant_id:
-                #    plant_rot_joint_displacement_y, _, plant_hinge_y_reac, _ = pybullet.getJointState(pid, 0)
-                #    plant_rot_joint_displacement_x, _, plant_hinge_x_reac, _ = pybullet.getJointState(pid, 1)
-                #    pybullet.applyExternalTorque(pid, linkIndex=1,
-                #                                 torqueObj=[-200 * plant_rot_joint_displacement_x,
-                #                                            -200 * plant_rot_joint_displacement_y, 0],
-                #                                 flags=pybullet.WORLD_FRAME)
-
-                # if(pairwise_collision(robot, 2)):
-                #     print("Collision Detected!!")
-                #     exit()
 
                 for e, b in enumerate(movable):
                     b.observe()
@@ -461,12 +445,6 @@ class Command(object):
                         print("Error! Deflection limit exceeded!")
                         deflection_over_limit = deflection_over_limit + (b.deflection - deflection_limit)
 
-                        # import pickle
-                        # with open('path_smoothed.pkl', 'wb') as f:
-                        #     pickle.dump([path.body_paths[0].path], f)
-                        #
-                        # input("")
-
                 print("========================================")
 
                 cur_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
@@ -474,13 +452,6 @@ class Command(object):
                 total_ee_path_cost = total_ee_path_cost + np.linalg.norm(cur_ee_pos - prev_ee_pos)
 
                 prev_ee_pos = cur_ee_pos
-
-                #for t in range(23):
-                #    pybullet.stepSimulation()
-
-                    #time.sleep(time_step)
-                    # wait_for_duration(time_step)
-                # wait_if_gui("press enter to move to next step")
 
         total_cost = total_ee_path_cost + (alpha * deflection_over_limit)
 
@@ -496,27 +467,14 @@ class Command(object):
 
     def execute_multi_world(self, init_conf, multi_world_env, num_worlds=4):
 
-        # distance_fn, alpha = cost_utils
+        """
+        Function to execute a given path in a multi world scenario
+        """
 
         total_cost = 0
         total_ee_path_cost = 0
         deflection_over_limit = np.zeros(num_worlds)
         alpha = 0.1
-
-        # text_id = []
-
-        # text_ori = pybullet.getQuaternionFromEuler([1.57, 0.0, 0.0])
-        # text_ori = pybullet.getQuaternionFromEuler([0.62, 0.0, 0.5])
-
-        # pybullet.addUserDebugText("Deflection limit: %0.3f rad" % (multi_world_env.deflection_limit), [-1.95, 1, 1.05],
-        #                           textColorRGB=[1, 0, 0])
-
-        # for b in single_plant_env.movable:
-        #     b.observe_all()
-        #
-        #     for e, deflection in enumerate(b.deflections):
-        #         text_id.append(pybullet.addUserDebugText("Deflection of link " + str(e + 1) + ": " + str(deflection),
-        #                                                  [-2 - 0.2 * e, 1, 1 - 0.2 * e], textColorRGB=[0, 0, 0]))
 
         prev_ee_pos = np.array(pybullet.getLinkState(multi_world_env.sample_robot, 9)[0])
 
@@ -526,18 +484,6 @@ class Command(object):
 
         for i, body_path in enumerate(self.body_paths):
             for j in body_path.iterator_multi_world(multi_world_env):
-
-                # for pid in plant_id:
-                #    plant_rot_joint_displacement_y, _, plant_hinge_y_reac, _ = pybullet.getJointState(pid, 0)
-                #    plant_rot_joint_displacement_x, _, plant_hinge_x_reac, _ = pybullet.getJointState(pid, 1)
-                #    pybullet.applyExternalTorque(pid, linkIndex=1,
-                #                                 torqueObj=[-200 * plant_rot_joint_displacement_x,
-                #                                            -200 * plant_rot_joint_displacement_y, 0],
-                #                                 flags=pybullet.WORLD_FRAME)
-
-                # if(pairwise_collision(robot, 2)):
-                #     print("Collision Detected!!")
-                #     exit()
 
                 for e_env, env_item in enumerate(multi_world_env.envs.items()):
 
@@ -564,12 +510,6 @@ class Command(object):
 
                 prev_ee_pos = cur_ee_pos
 
-                # for t in range(23):
-                #    pybullet.stepSimulation()
-
-                # time.sleep(time_step)
-                # wait_for_duration(time_step)
-                # wait_if_gui("press enter to move to next step")
 
         total_cost = total_ee_path_cost + (alpha * deflection_over_limit)
 
@@ -684,8 +624,6 @@ class Command(object):
     def execute_with_controls_v2(self, robot, init_conf, movable=[],
                               deflection_limit=0):
 
-        # distance_fn, alpha = cost_utils
-
         total_cost = 0
         total_ee_path_cost = 0
         deflection_over_limit = 0
@@ -693,7 +631,6 @@ class Command(object):
 
         text_id = []
 
-        # text_ori = pybullet.getQuaternionFromEuler([1.57, 0.0, 0.0])
         text_ori = pybullet.getQuaternionFromEuler([0.62, 0.0, 0.5])
 
         pybullet.addUserDebugText("Deflection limit: %0.3f rad" % (deflection_limit), [-1.95, 1, 1.05],
@@ -718,20 +655,7 @@ class Command(object):
             s_utils.step_sim_v2()
 
         for i, body_path in enumerate(self.body_paths):
-            # for j in body_path.iterator():
             for j in body_path.iterator_with_control_v2():
-
-                # for pid in plant_id:
-                #    plant_rot_joint_displacement_y, _, plant_hinge_y_reac, _ = pybullet.getJointState(pid, 0)
-                #    plant_rot_joint_displacement_x, _, plant_hinge_x_reac, _ = pybullet.getJointState(pid, 1)
-                #    pybullet.applyExternalTorque(pid, linkIndex=1,
-                #                                 torqueObj=[-200 * plant_rot_joint_displacement_x,
-                #                                            -200 * plant_rot_joint_displacement_y, 0],
-                #                                 flags=pybullet.WORLD_FRAME)
-
-                # if(pairwise_collision(robot, 2)):
-                #     print("Collision Detected!!")
-                #     exit()
 
                 for b in movable:
                     b.observe_all()
@@ -747,12 +671,6 @@ class Command(object):
                             print("Error! Deflection limit exceeded!")
                             deflection_over_limit = deflection_over_limit + (deflection - deflection_limit)
 
-                            # import pickle
-                            # with open('path_smoothed.pkl', 'wb') as f:
-                            #     pickle.dump([path.body_paths[0].path], f)
-                            #
-                            # input("")
-
                 print("========================================")
 
                 cur_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
@@ -760,13 +678,6 @@ class Command(object):
                 total_ee_path_cost = total_ee_path_cost + np.linalg.norm(cur_ee_pos - prev_ee_pos)
 
                 prev_ee_pos = cur_ee_pos
-
-                # for t in range(23):
-                #    pybullet.stepSimulation()
-
-                # time.sleep(time_step)
-                # wait_for_duration(time_step)
-                # wait_if_gui("press enter to move to next step")
 
         total_cost = total_ee_path_cost + (alpha * deflection_over_limit)
 
@@ -1079,19 +990,29 @@ def get_free_motion_gen(robot, fixed=[], teleport=False, self_collisions=True):
 
 
 def get_free_motion_gen_single_plant(robot, fixed=[], teleport=False, self_collisions=True):
-    def fn(conf1, conf2, fluents=[]):
+    
+    """
+    Function to perform planning from conf1 to conf2
+    """
+
+    def fn(conf1, conf2):
         assert ((conf1.body == conf2.body) and (conf1.joints == conf2.joints))
         if teleport:
             path = [conf1.configuration, conf2.configuration]
         else:
-            conf1.assign_with_controls_old()
-            obstacles = fixed + assign_fluent_state(fluents)
 
+            # Assign joint state of arm to conf1
+            conf1.assign_with_controls_old()
+            obstacles = fixed
+
+            # Planning toward conf2
             path = plan_joint_motion_single_plant(robot, conf2.joints, conf2.configuration, obstacles=obstacles,
                                                    self_collisions=self_collisions)
             if path is None:
                 if DEBUG_FAILURE: wait_if_gui('Free motion failed')
                 return None
+
+        # Command object that contains a path if found
         command = Command([BodyPath(robot, path, joints=conf2.joints)])
         return (command,)
     return fn
@@ -1099,14 +1020,17 @@ def get_free_motion_gen_single_plant(robot, fixed=[], teleport=False, self_colli
 
 
 def get_free_motion_gen_multiworld_benchmark(robot, fixed, multi_world_env, teleport=False, self_collisions=True):
-    def fn(conf1, conf2, fluents=[]):
+    def fn(conf1, conf2):
+
+        """
+        Function to perform planning from conf1 to conf2
+        """
+
         assert ((conf1.body == conf2.body) and (conf1.joints == conf2.joints))
         if teleport:
             path = [conf1.configuration, conf2.configuration]
         else:
-            # conf1.assign_with_controls()
             multi_world_env.step(conf1.configuration)
-            # obstacles = fixed + assign_fluent_state(fluents)
             path = plan_joint_motion_multiworld_benchmark(robot, conf2.joints, conf2.configuration, multi_world_env,
                                                    obstacles=fixed,
                                                    self_collisions=self_collisions)
@@ -1118,18 +1042,29 @@ def get_free_motion_gen_multiworld_benchmark(robot, fixed, multi_world_env, tele
     return fn
 
 def get_free_motion_gen_with_controls(robot, fixed=[], teleport=False, self_collisions=True):
-    def fn(conf1, conf2, fluents=[]):
+
+    """
+    Method that returns a function to carry out planning from conf1 to conf2 
+    """
+
+    def fn(conf1, conf2):
         assert ((conf1.body == conf2.body) and (conf1.joints == conf2.joints))
         if teleport:
             path = [conf1.configuration, conf2.configuration]
         else:
+
+            # Assign joint states to conf1
             conf1.assign_with_controls()
-            obstacles = fixed + assign_fluent_state(fluents)
+            obstacles = fixed
+
+            # Plan a path to conf2
             path = plan_joint_motion_with_controls(robot, conf2.joints, conf2.configuration, obstacles=obstacles,
                                                    self_collisions=self_collisions)
             if path is None:
                 if DEBUG_FAILURE: wait_if_gui('Free motion failed')
                 return None
+
+        # Creating a Command object that contains the newly found path
         command = Command([BodyPath(robot, path, joints=conf2.joints)])
         return (command,)
     return fn
@@ -1157,7 +1092,7 @@ def get_free_motion_gen_with_angle_constraints(robot, fixed=[], movable = [], de
 def get_free_motion_gen_with_angle_constraints_v4(robot, start_state_id, fixed=[], movable = [], deflection_limit = 0,
                                                   self_collisions=True):
     """
-    Method to fina a path between two configurations.
+    Method to find a path between two configurations.
 
     :param robot: Body ID of the robot.
     :param start_state_id: The saved state ID of the initial state of the environment. This is returned by pybullet
@@ -1171,7 +1106,7 @@ def get_free_motion_gen_with_angle_constraints_v4(robot, start_state_id, fixed=[
     :return: A function that can be used to find a path between two configurations for the given robot and environment.
     """
 
-    def fn(conf1, conf2, fluents=[]):
+    def fn(conf1, conf2):
         """
 
         :param conf1: Initial configuration
@@ -1183,10 +1118,10 @@ def get_free_motion_gen_with_angle_constraints_v4(robot, start_state_id, fixed=[
 
         # Assign the initial configuration
         conf1.assign_with_controls_old()
-        obstacles = fixed + assign_fluent_state(fluents)
+        obstacles = fixed
 
         # Plan a path between conf1 and conf2
-        path = plan_joint_motion_with_angle_contraints_v4(robot, start_state_id, conf2.joints, conf2.configuration,
+        path = plan_joint_motion_with_angle_constraints_v4(robot, start_state_id, conf2.joints, conf2.configuration,
                                                           obstacles=obstacles, movable=movable,
                                                           deflection_limit=deflection_limit,
                                                           self_collisions=self_collisions)
@@ -1204,7 +1139,7 @@ def get_free_motion_gen_with_angle_constraints_v4(robot, start_state_id, fixed=[
 def get_free_motion_gen_with_angle_constraints_multi_world(robot, start_state_id, multi_world_env, self_collisions=True):
 
     """
-    Method to fina a path between two configurations.
+    Method to find a path between two configurations.
 
     :param robot: Body ID of the robot.
     :param start_state_id: The saved state ID of the initial state of the environment. This is returned by pybullet
@@ -1228,22 +1163,9 @@ def get_free_motion_gen_with_angle_constraints_multi_world(robot, start_state_id
         :return: A command object that contains the path(s) between the initial and final configurations.
         """
 
-        # Assign the initial configuration
-        # obstacles = fixed
-
-        # conf1.assign_with_controls()
-        # for env in multi_world_env.envs:
-        #     set_joint_positions(multi_world_env.envs[env].robot, multi_world_env.joints, conf1.configuration)
-        # multi_world_env.step(conf1.configuration)
-
         multi_world_env.step(conf1.configuration, True)
 
-        # Plan a path between conf1 and conf2
-        # path = plan_joint_motion_with_angle_contraints_v6(robot, start_state_id, conf2.joints, conf2.configuration,
-        #                                                   obstacles=obstacles, movable=movable,
-        #                                                   deflection_limit=deflection_limit,
-        #                                                   self_collisions=self_collisions)
-        path = plan_joint_motion_with_angle_contraints_multi_world(robot, start_state_id, conf2.configuration,
+        path = plan_joint_motion_with_angle_constraints_multi_world(robot, start_state_id, conf2.configuration,
                                                           multi_world_env, self_collisions=self_collisions)
 
         if path is None:
@@ -1294,7 +1216,7 @@ def get_free_motion_gen_with_angle_constraints_v7(robot, start_state_id, single_
         #                                                   obstacles=obstacles, movable=movable,
         #                                                   deflection_limit=deflection_limit,
         #                                                   self_collisions=self_collisions)
-        path = plan_joint_motion_with_angle_contraints_v7(robot, start_state_id, conf2.configuration,
+        path = plan_joint_motion_with_angle_constraints_v7(robot, start_state_id, conf2.configuration,
                                                           single_plant_env, self_collisions=self_collisions)
 
         if path is None:
@@ -1309,7 +1231,7 @@ def get_free_motion_gen_with_angle_constraints_v6(robot, start_state_id, fixed=[
                                                   self_collisions=True):
 
     """
-    Method to fina a path between two configurations.
+    Method to find a path between two configurations.
 
     :param robot: Body ID of the robot.
     :param start_state_id: The saved state ID of the initial state of the environment. This is returned by pybullet
@@ -1338,7 +1260,7 @@ def get_free_motion_gen_with_angle_constraints_v6(robot, start_state_id, fixed=[
         obstacles = fixed + assign_fluent_state(fluents)
 
         # Plan a path between conf1 and conf2
-        path = plan_joint_motion_with_angle_contraints_v6(robot, start_state_id, conf2.joints, conf2.configuration,
+        path = plan_joint_motion_with_angle_constraints_v6(robot, start_state_id, conf2.joints, conf2.configuration,
                                                           obstacles=obstacles, movable=movable,
                                                           deflection_limit=deflection_limit,
                                                           self_collisions=self_collisions)

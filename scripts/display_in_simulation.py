@@ -1,5 +1,5 @@
 """
-This file was used to visualize the single stemmed plant during testing.
+This file was used in testing to visualize the single stemmed plant.
 """
 
 import os

@@ -1,5 +1,9 @@
 #l!/usr/bin/env python
 
+"""
+This file was used in testing to visualize the entire single stem environment.
+"""
+
 from __future__ import print_function
 
 import os
@@ -12,8 +16,7 @@ from plant_motion_planning.pybullet_tools.utils import connect, dump_world, set_
     draw_global_system, set_camera_pose, Pose, Point, Euler, BLOCK_URDF, load_model, disconnect, wait_if_gui, \
     disable_real_time, HideOutput, DRAKE_IIWA_URDF_EDIT
 import pybullet as p
-from plant_motion_planning.utils import make_plant_responsive, generate_tall_plants
-
+from plant_motion_planning.utils import make_plant_responsive, generate_tall_plants, envs
 
 # Initial configuration of the Arm
 init_conf = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)

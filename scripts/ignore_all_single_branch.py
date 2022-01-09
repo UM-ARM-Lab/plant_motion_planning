@@ -1,10 +1,9 @@
 #l!/usr/bin/env python
 
 """
-This program finds a path between two configurations of a robotic arm by deflecting plants within their limits and
-without colliding with other objects.
+This program finds a path between two configurations of a robotic arm by deflecting plants without caring about their deflection limits.
 
-This program only deals with plants with single stems. Refer to v6 of our method for a multi-branch implementation.
+This program only deals with plants with single stems. Refer to cfg.ROOT_DIR/scripts/ignore_all_multi_branch.py for a multi-branch implementation.
 
 """
 
@@ -75,13 +74,9 @@ goal_conf = (-1.3871757013351371, 1.6063773991870438, 2.152853076950719, -1.0638
              1.9391079682303638, -1.051507203470595)
 
 
-def main(display='execute'): # control | execute | step
+def main():
     """
     Main function of this program.
-
-    :param:
-        display: Type of execution of the program. eg. full path execution, step by step execution etc.
-    :return: -
     """
 
     # GUI connection client object
@@ -126,12 +121,11 @@ def main(display='execute'): # control | execute | step
     # Create a BodyConf object with the final or end configuration stored in it
     conf_g = BodyConf(robot, configuration=goal_conf)
 
-    # Moving arm from conf_i to conf_g and avoiding the block, floor. The plants are deflected within their limits to
-    # reach the goal
+    # Moving arm from conf_i to conf_g and avoiding the block, floor. The plants are deflected without caring about their limits.
     command = move_arm_conf2conf(robot, [floor, block],
                                  conf_i, conf_g)
 
-    if (command is None) or (display is None):
+    if (command is None):
         print('Unable to find a plan!')
         print("*********************************************************")
         return
@@ -144,21 +138,8 @@ def main(display='execute'): # control | execute | step
     if(args.video_filename != None):
         log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4, fileName=args.video_filename)
 
-    # Poll the value of display and execute accordingly
-    if display == 'control':
-        enable_gravity()
-        command.control(real_time=False, dt=0)
-    elif display == 'execute':
-        command.refine(num_steps=10).execute(time_step=0.005)
-    elif display == 'execute_with_movable_plant':
-        command.refine(num_steps = 10).execute_with_movable_plant(robot, plant1, time_step = 0.005)
-    elif display == 'step':
-        command.step()
-    elif display == 'angle_step':
-        command.execute_with_controls(robot, init_conf, block, plant_ids, plant_representations,
+    command.execute_with_controls(robot, init_conf, block, plant_ids, plant_representations,
                                                             deflection_limit)
-    else:
-        raise ValueError(display)
 
     print('Quitting simulation')
 
@@ -168,4 +149,4 @@ def main(display='execute'): # control | execute | step
     disconnect()
 
 if __name__ == '__main__':
-    main(display = "angle_step")
+    main()

@@ -1,21 +1,26 @@
 #l!/usr/bin/env python
 
+"""
+This program finds a path between two configurations of a robotic arm by deflecting plants within their limits and
+without colliding with other objects.
+
+This program only deals with plants with single stems. Refer to our_method_multi_branch.py for a multi-branch
+implementation.
+"""
+
 from __future__ import print_function
 
 import os
 
-import numpy as np
 import pybullet_data
 
 from plant_motion_planning import cfg
-from plant_motion_planning.pybullet_tools.kuka_primitives import BodyConf, Command, get_free_motion_gen, get_free_motion_gen_with_controls
+from plant_motion_planning.pybullet_tools.kuka_primitives import BodyConf, Command, get_free_motion_gen_with_angle_constraints_v4
 from plant_motion_planning.pybullet_tools.utils import enable_gravity, connect, dump_world, set_pose, \
-    draw_global_system, set_camera_pose, Pose, Point, Euler, BLOCK_URDF, load_model, disconnect, wait_if_gui, update_state, \
-    disable_real_time, HideOutput, DRAKE_IIWA_URDF_EDIT, get_movable_joints
+    draw_global_system, set_camera_pose, Pose, Point, Euler, BLOCK_URDF, load_model, disconnect, update_state, \
+    disable_real_time, HideOutput, DRAKE_IIWA_URDF_EDIT, save_state
 import pybullet as p
-from plant_motion_planning.utils import step_sim, \
-    load_plant_from_urdf, generate_random_plant
-
+from plant_motion_planning.utils import envs, generate_tall_plants
 import argparse
 
 
@@ -23,17 +28,17 @@ import argparse
 parser = argparse.ArgumentParser(description='')
 parser.add_argument("--video_filename", type=str, help="File name of video file to record planning with full path",
                     default=None)
+parser.add_argument("--env", type=str, help="Name of environment to be used", default=None)
 parser.add_argument("--deflection_limit", type=float, help="Maximum amount of deflection to be permitted", default=None)
-parser.add_argument("--plant_filename", type=str, help="Path to locations of plant model files",
-                    default=None)
 args = parser.parse_args()
 
-if args.deflection_limit is None:
+
+if(args.env == None or args.deflection_limit == None):
     print("Error!! All data must be provided")
     exit()
 
 
-def move_arm_conf2conf(robot, fixed, conf_i, conf_g):
+def move_arm_conf2conf(robot, fixed, movable, deflection_limit, conf_i, conf_g, teleport=False):
     """
     Method to find a path between conf_i and conf_g
 
@@ -45,21 +50,34 @@ def move_arm_conf2conf(robot, fixed, conf_i, conf_g):
         conf_g: BodyConf object denotion the final or goal configuration
 
     :return:
-        A Command object that contains the path(s) from conf_i to conf_g if a one exists. Else, it return None.
+        A Command object that contains the path(s) from conf_i to conf_g if a path exists. Else, if no path exists, it
+        return None.
     """
 
-    free_motion_fn = get_free_motion_gen_with_controls(robot, fixed=fixed, teleport=False)
+    # Save the initial state of simulation
+    start_state_id = save_state()
 
-    # Attempt to find a path between conf_i and conf_g repeatedly
-    for num_attempts in range(200):
+    # A motion planner function that will be used to find a path
+    free_motion_fn = get_free_motion_gen_with_angle_constraints_v4(robot, start_state_id, fixed= fixed, movable = movable,
+                                                                   deflection_limit = deflection_limit)
+    # free_motion_fn = get_free_motion_gen(robot, fixed = (fixed), teleport=False)
 
-        path_data = free_motion_fn(conf_i, conf_g)
+    # Number of attempts at finding a path between conf_i and conf_g
+    num_attempts = 200
 
-        if(path_data is not None and path_data[0] is not None):
-            path = path_data[0]
+    path = []
+    for attempt in range(num_attempts):
+
+        result = free_motion_fn(conf_i, conf_g)
+
+        if result is None or result[0] is None:
+            continue
+        else:
+            path, = result
             return Command(path.body_paths)
 
     return None
+
 
 
 # Initial configuration of the Arm
@@ -72,15 +90,11 @@ goal_conf = (-1.3871757013351371, 1.6063773991870438, 2.152853076950719, -1.0638
 def main():
     """
     Main function of this program.
-
-    :param:
-        display: Type of execution of the program. eg. full path execution, step by step execution etc.
-    :return: -
     """
 
     # GUI connection client object
-    cli = connect(use_gui=True,width=1000, height=700)
-    # connect(use_gui=True,width=1920, height=1080)
+    # connect(use_gui=True,width=1000, height=700)
+    connect(use_gui=True,width=1920, height=1080)
     disable_real_time()
 
     # Set camera pose to desired position and orientation
@@ -101,19 +115,11 @@ def main():
     # Set location and orientation of block in the simulation world
     set_pose(block, Pose(Point(x=0.4,y=-0.4,z=0.45),Euler(yaw=1.57)))
 
+    # Get plant positions given the kind of placement of plants required
+    plant_positions = envs[args.env]
 
-    # Generate a new plant whose number of branches, number of stems, natural deflections etc. are randomly sampled
-    # num_branches_per_stem = 1
-    # total_num_vert_stems = 2
-    # total_num_extensions = 1
-    # base_pos_xy = [np.random.uniform(low=0, high=0.35), np.random.uniform(low=-0.5, high=0.0)]
-    # # base_pos_xy = [0.6, 0.6]
-    # plant_id, plant_rep, joint_list, base_id = generate_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_extensions,
-    #                                             base_pos_xy, physicsClientId=cli, save_plant=True)
-
-    # Load a plant from a previously generated random plant that has then been stored in a urdf file
-    plant_id, plant_rep, joint_list, base_id = load_plant_from_urdf(os.path.join(args.plant_filename, "plant.urdf"),
-                                               os.path.join(args.plant_filename, "plant_params.pkl"), (0, 0))
+    # Generate plants given positions
+    plant_ids, plant_representations = generate_tall_plants(num_plants=len(plant_positions), positions=plant_positions, floor=floor)
 
     dump_world()
 
@@ -125,11 +131,13 @@ def main():
 
     # Create a BodyConf object with the initial configuration stored in it
     conf_i = BodyConf(robot, configuration=init_conf)
-    # Create a BodyConf object with the final configuration stored in it
+    # Create a BodyConf object with the final or end configuration stored in it
     conf_g = BodyConf(robot, configuration=goal_conf)
 
-    # Moving arm from conf_i to conf_g and avoiding the block, floor and plant
-    command = move_arm_conf2conf(robot, [floor, block, plant_id], conf_i, conf_g)
+    # Moving arm from conf_i to conf_g and avoiding the block, floor. The plants are deflected within their limits to
+    # reach the goal
+    command = move_arm_conf2conf(robot, [floor, block], plant_representations, deflection_limit,
+                                 conf_i, conf_g)
 
     if (command is None):
         print('Unable to find a plan!')
@@ -141,19 +149,17 @@ def main():
     update_state()
 
     # Save a video of the execution if required
-    if (args.video_filename != None):
+    if(args.video_filename != None):
         log_id = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4, fileName=args.video_filename)
 
-    command.execute_with_controls_v2(robot, init_conf, [plant_rep],
-                                         deflection_limit)
-
+    command.execute_with_controls(robot, init_conf, block, plant_ids, plant_representations,
+                                                            deflection_limit)
     print('Quitting simulation')
 
     # shutting down logger
     if(args.video_filename != None):
         p.stopStateLogging(log_id)
     disconnect()
-
 
 if __name__ == '__main__':
     main()

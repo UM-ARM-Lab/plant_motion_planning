@@ -9,11 +9,6 @@ from plant_motion_planning.pybullet_tools.kuka_primitives import get_free_motion
 from plant_motion_planning.utils import generate_random_plant, step_sim_v2, load_plant_from_urdf
 
 
-# global cli
-
-# fixed = []
-
-
 
 class Environment():
 
@@ -31,6 +26,10 @@ class Environment():
 
 
 class SinglePlantEnv(Environment):
+
+    """
+    Single plant environment
+    """
 
     def __init__(self, deflection_limit, num_branches_per_stem=None, total_num_vert_stems=None,
                  total_num_extensions=None, plant_pos_xy_limits=((0, 1), (0, 1)), base_offset_xy=(0, 0), loadPath=None, physicsClientId=None, avoid_all=False):
@@ -51,6 +50,10 @@ class SinglePlantEnv(Environment):
         self.robot = pyb_tools_utils.load_model(pyb_tools_utils.DRAKE_IIWA_URDF_EDIT, pose=pose_robot, fixed_base = True) # KUKA_IIWA_URDF | DRAKE_IIWA_URDF
 
         if(loadPath is None):
+
+            # num_branches_per_stem = np.random.randint(1, 4)
+            # total_num_vert_stems = np.random.randint(2, 4)
+            # total_num_extensions = np.random.randint(1, 3)
 
             plant_pos_xy = [np.random.uniform(low=plant_pos_xy_limits[0][0], high=plant_pos_xy_limits[0][1]),
                             np.random.uniform(low=plant_pos_xy_limits[1][0], high=plant_pos_xy_limits[1][1])]
@@ -119,6 +122,10 @@ class SinglePlantEnv(Environment):
 
     def step(self, action, set_joint_pos=False):
 
+        """
+        Customized step simulation function
+        """
+
         if(set_joint_pos):
             pyb_tools_utils.set_joint_positions(self.robot, self.joints, action)
         p.setJointMotorControlArray(self.robot, self.joints, p.POSITION_CONTROL, action, positionGains=7 * [0.01])
@@ -142,16 +149,6 @@ class SinglePlantEnv(Environment):
             pyb_tools_utils.set_joint_positions(self.robot, self.joints, action)
         p.setJointMotorControlArray(self.robot, self.joints, p.POSITION_CONTROL, action, positionGains=7 * [0.01])
 
-
-        # for i in range(11):
-        #
-        #     # Restore plant joints after deflection
-        #     self._restore_plant_joints()
-        #
-        #     # stepping through simulation
-        #     for t in range(200):
-        #         pyb_tools_utils.step_simulation()
-
         return None
 
     def state(self):
@@ -168,6 +165,11 @@ class SinglePlantEnv(Environment):
         return self.collision_fn_benchmark(q)
 
 class MultiPlantWorld(Environment):
+
+    """
+    Multi world environment
+    """
+
     def __init__(self, xs, ys, *args, **kwargs):
         self.envs = {}
         for x in xs:
@@ -181,13 +183,6 @@ class MultiPlantWorld(Environment):
         self.fixed = self.envs[(xs[0], ys[0])].fixed
         self.deflection_limit = self.envs[(xs[0], ys[0])].deflection_limit
 
-    # def step(self, action, set_joint_pos=False):
-    #     ret = {}
-    #     # step all the environments with the same action
-    #     for xy, env in self.envs.items():
-    #         ret[xy] = env.step(action, set_joint_pos=set_joint_pos)
-    #
-    #     return ret
 
     def step(self, action, set_joint_pos=False):
         for xy, env in self.envs.items():

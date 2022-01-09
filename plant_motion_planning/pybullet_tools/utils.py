@@ -4534,7 +4534,7 @@ def plan_joint_motion_with_angle_constraints_v5(body, start_state_id, joints, en
 def plan_joint_motion_single_plant(body, joints, end_conf, obstacles=[], attachments=[],
                                     self_collisions=True, disabled_collisions=set(),
                                     weights=None, resolutions=None, max_distance=MAX_DISTANCE,
-                                    use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
+                                    use_aabb=False, cache=True, custom_limits={}, **kwargs):
 
     assert len(joints) == len(end_conf)
     if (weights is None) and (resolutions is not None):
@@ -4542,35 +4542,28 @@ def plan_joint_motion_single_plant(body, joints, end_conf, obstacles=[], attachm
     sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
     distance_fn = get_distance_fn(body, joints, weights=weights)
     extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
+    
+    # Function to check for collisions with obstacles
     collision_fn = get_collision_fn_with_controls(body, joints, obstacles, attachments, self_collisions,
                                                   disabled_collisions,
                                                   custom_limits=custom_limits, max_distance=max_distance,
                                                   use_aabb=use_aabb, cache=cache)
-    # collision_fn = get_collision_fn_with_controls_v2(body, joints, obstacles, attachments, self_collisions,
-    #                                                  disabled_collisions,
-    #                                                  custom_limits=custom_limits, max_distance=max_distance,
-    #                                                  use_aabb=use_aabb, cache=cache)
+
 
     start_conf = get_joint_positions(body, joints)
+
+    # Check initial and final configurations for any constraint violations
     if not check_initial_end_with_controls(body, start_conf, end_conf, collision_fn):
         return None
-    # if not check_initial_end_with_controls_v2(body, start_conf, end_conf, collision_fn):
-    #     return None
 
-    if algorithm is None:
-        # return rrt_connect_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
-        #                                  **kwargs)
-        return birrt_single_plant(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
-        # return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
-    return solve(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, algorithm=algorithm, **kwargs)
-    #return plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)
+    return birrt_single_plant(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
 
 
 
 def plan_joint_motion_multiworld_benchmark(body, joints, end_conf, multi_world_env, obstacles=[], attachments=[],
                                     self_collisions=True, disabled_collisions=set(),
                                     weights=None, resolutions=None, max_distance=MAX_DISTANCE,
-                                    use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
+                                    use_aabb=False, cache=True, custom_limits={}, **kwargs):
 
     assert len(joints) == len(end_conf)
     if (weights is None) and (resolutions is not None):
@@ -4578,29 +4571,27 @@ def plan_joint_motion_multiworld_benchmark(body, joints, end_conf, multi_world_e
     sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
     distance_fn = get_distance_fn(body, joints, weights=weights)
     extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
-    # collision_fn = get_collision_fn_with_controls(body, joints, obstacles, attachments, self_collisions,
-    #                                               disabled_collisions,
-    #                                               custom_limits=custom_limits, max_distance=max_distance,
-    #                                               use_aabb=use_aabb, cache=cache)
+
+    # Collision function 
     collision_fn = multi_world_env.net_constraint_violation_checker_benchmark
 
     start_conf = get_joint_positions(body, joints)
-    # if not check_initial_end_with_controls(body, start_conf, end_conf, collision_fn):
-    #     return None
+
     if not check_initial_end_multi_world(body, start_conf, end_conf, collision_fn, multi_world_env):
         return None
 
-    if algorithm is None:
-        return birrt_multiworld_benchmark(multi_world_env, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
+    return birrt_multiworld_benchmark(multi_world_env, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
 
-    return solve(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, algorithm=algorithm, **kwargs)
-    #return plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)
 
 
 def plan_joint_motion_with_controls(body, joints, end_conf, obstacles=[], attachments=[],
                                     self_collisions=True, disabled_collisions=set(),
                                     weights=None, resolutions=None, max_distance=MAX_DISTANCE,
-                                    use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
+                                    use_aabb=False, cache=True, custom_limits={}, **kwargs):
+
+    """
+    Method to plan a path to end_conf from the current joint state the arm is in.
+    """
 
     assert len(joints) == len(end_conf)
     if (weights is None) and (resolutions is not None):
@@ -4608,30 +4599,23 @@ def plan_joint_motion_with_controls(body, joints, end_conf, obstacles=[], attach
     sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
     distance_fn = get_distance_fn(body, joints, weights=weights)
     extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
-    # collision_fn = get_collision_fn_with_controls(body, joints, obstacles, attachments, self_collisions,
-    #                                               disabled_collisions,
-    #                                               custom_limits=custom_limits, max_distance=max_distance,
-    #                                               use_aabb=use_aabb, cache=cache)
+    
+    # Collision function to check for collision with obstacles
     collision_fn = get_collision_fn_with_controls_v2(body, joints, obstacles, attachments, self_collisions,
                                                   disabled_collisions,
                                                   custom_limits=custom_limits, max_distance=max_distance,
                                                   use_aabb=use_aabb, cache=cache)
 
     start_conf = get_joint_positions(body, joints)
-    # if not check_initial_end_with_controls(body, start_conf, end_conf, collision_fn):
-    #     return None
+    
+    # Check if initial and goal configurations are violating any constraints
     if not check_initial_end_with_controls_v2(body, start_conf, end_conf, collision_fn):
         return None
 
-    if algorithm is None:
-        # return rrt_connect_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
-        #                                  **kwargs)
-        return birrt_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
-        # return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
-    return solve(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, algorithm=algorithm, **kwargs)
-    #return plan_lazy_prm(start_conf, end_conf, sample_fn, extend_fn, collision_fn)
+    return birrt_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
 
-def plan_joint_motion_with_angle_contraints_v4(body, start_state_id, joints, end_conf, obstacles=[], attachments=[],
+
+def plan_joint_motion_with_angle_constraints_v4(body, start_state_id, joints, end_conf, obstacles=[], attachments=[],
                                                movable = [], deflection_limit = 0, self_collisions=True, disabled_collisions=set(),
                                                weights=None, resolutions=None, max_distance=MAX_DISTANCE,
                                                use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
@@ -4678,7 +4662,8 @@ def plan_joint_motion_with_angle_contraints_v4(body, start_state_id, joints, end
     collision_fn = get_collision_fn_with_angle_constraints_v2(body, joints, obstacles, movable, deflection_limit, attachments, self_collisions, disabled_collisions,
                                                               custom_limits=custom_limits, max_distance=max_distance,
                                                               use_aabb=use_aabb, cache=cache)
-    # TODO
+    
+    # Collision function for the backward tree
     collision_fn_back = get_collision_fn_with_angle_constraints_v2(body, joints, obstacles, [], deflection_limit, attachments, self_collisions, disabled_collisions,
                                                               custom_limits=custom_limits, max_distance=max_distance,
                                                               use_aabb=use_aabb, cache=cache)
@@ -4703,7 +4688,7 @@ def plan_joint_motion_with_angle_contraints_v4(body, start_state_id, joints, end
 
 
 
-def plan_joint_motion_with_angle_contraints_multi_world(body, start_state_id, end_conf, multi_world_env, attachments=[],
+def plan_joint_motion_with_angle_constraints_multi_world(body, start_state_id, end_conf, multi_world_env, attachments=[],
                                                self_collisions=True, disabled_collisions=set(), weights=None,
                                                resolutions=None, max_distance=MAX_DISTANCE, use_aabb=False, cache=True,
                                                custom_limits={}, algorithm=None, **kwargs):
@@ -4757,11 +4742,6 @@ def plan_joint_motion_with_angle_contraints_multi_world(body, start_state_id, en
 
     # Wait for some time to let the environment settle down
     print("Waiting for the environment to settle...")
-    # t = 0
-    # while(t <= 10):
-    #     t = t + 1
-    #     # TODO: Possible error
-    #     multi_world_env.step(start_conf)
     multi_world_env.step(start_conf)
 
 
@@ -4770,16 +4750,11 @@ def plan_joint_motion_with_angle_contraints_multi_world(body, start_state_id, en
         return None
 
 
-    # Execute Bi-directional RRT
-    # return birrt_v6(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn,
-    #                 [collision_fn, collision_fn_back], movable, **kwargs)
-    # return birrt_v7(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn,
-    #                 [collision_fn, collision_fn_back], single_plant_env, **kwargs)
     return birrt_multi_world(start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn,
                     [collision_fn, collision_fn_back], multi_world_env, **kwargs)
 
 
-def plan_joint_motion_with_angle_contraints_v7(body, start_state_id, end_conf, single_plant_env, attachments=[],
+def plan_joint_motion_with_angle_constraints_v7(body, start_state_id, end_conf, single_plant_env, attachments=[],
                                                self_collisions=True, disabled_collisions=set(), weights=None,
                                                resolutions=None, max_distance=MAX_DISTANCE, use_aabb=False, cache=True,
                                                custom_limits={}, algorithm=None, **kwargs):
@@ -4863,7 +4838,7 @@ def plan_joint_motion_with_angle_contraints_v7(body, start_state_id, end_conf, s
                     [collision_fn, collision_fn_back], single_plant_env, **kwargs)
 
 
-def plan_joint_motion_with_angle_contraints_v6(body, start_state_id, joints, end_conf, obstacles=[], attachments=[],
+def plan_joint_motion_with_angle_constraints_v6(body, start_state_id, joints, end_conf, obstacles=[], attachments=[],
                                                movable = [], deflection_limit = 0, self_collisions=True, disabled_collisions=set(),
                                                weights=None, resolutions=None, max_distance=MAX_DISTANCE,
                                                use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):

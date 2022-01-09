@@ -1,3 +1,4 @@
+import pickle
 import time
 
 import numpy as np
@@ -54,36 +55,25 @@ def random_restarts_single_plant(solve_fn, robot, start, goal, distance_fn, samp
                                   restarts=RRT_RESTARTS, smooth=RRT_SMOOTHING,
                                   success_cost=0., max_time=INF, max_solutions=1, **kwargs):
     """
-    :param start: Start configuration - conf
-    :param goal: End configuration - conf
-    :param distance_fn: Distance function - distance_fn(q1, q2)->float
-    :param sample_fn: Sample function - sample_fn()->conf
-    :param extend_fn: Extension function - extend_fn(q1, q2)->[q', ..., q"]
-    :param collision_fn: Collision function - collision_fn(q)->bool
-    :param max_time: Maximum runtime - float
-    :param kwargs: Keyword arguments
-    :return: Paths [[q', ..., q"], [[q'', ..., q""]]
+    Function to plan using solve_fn and smooth path if found for a single stemmed plant environment.
     """
     start_time = time.time()
     solutions = []
-    # path = check_direct_with_controls(robot, start, goal, extend_fn, collision_fn)
-    # if path is False:
-    #     return None
-    # if path is not None:
-    #     solutions.append(path)
 
     for attempt in irange(restarts + 1):
         if (len(solutions) >= max_solutions) or (elapsed_time(start_time) >= max_time):
             break
         attempt_time = (max_time - elapsed_time(start_time))
+        
+        # Find a path from start to goal using solve_fn algorithm
         path = solve_fn(robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
                         max_time=attempt_time, **kwargs)
         if path is None:
             continue
 
-        # input("Path found! Press enter to start smoothing...")
         print("Path found! Press enter to start smoothing...")
 
+        # Perform smoothing on noisy path
         path = smooth_path_single_plant(path, robot, extend_fn, collision_fn, max_iterations=smooth,
                                          max_time=max_time-elapsed_time(start_time))
         solutions.append(path)
@@ -100,23 +90,10 @@ def random_restarts_multiworld_benchmark(solve_fn, multi_world_env, start, goal,
                                   restarts=RRT_RESTARTS, smooth=RRT_SMOOTHING,
                                   success_cost=0., max_time=INF, max_solutions=1, **kwargs):
     """
-    :param start: Start configuration - conf
-    :param goal: End configuration - conf
-    :param distance_fn: Distance function - distance_fn(q1, q2)->float
-    :param sample_fn: Sample function - sample_fn()->conf
-    :param extend_fn: Extension function - extend_fn(q1, q2)->[q', ..., q"]
-    :param collision_fn: Collision function - collision_fn(q)->bool
-    :param max_time: Maximum runtime - float
-    :param kwargs: Keyword arguments
-    :return: Paths [[q', ..., q"], [[q'', ..., q""]]
+    Path computation using solve_fn and smoothing of noisy path
     """
     start_time = time.time()
     solutions = []
-    # path = check_direct_with_controls(robot, start, goal, extend_fn, collision_fn)
-    # if path is False:
-    #     return None
-    # if path is not None:
-    #     solutions.append(path)
 
 
     for attempt in irange(restarts + 1):
@@ -128,8 +105,7 @@ def random_restarts_multiworld_benchmark(solve_fn, multi_world_env, start, goal,
         if path is None:
             continue
 
-        # input("Path found! Press enter to start smoothing...")
-        print("Path found! Press enter to start smoothing...")
+        print("Path found! Smoothing...")
 
         path = smooth_path_multiworld_benchmark(path, multi_world_env, extend_fn, collision_fn, max_iterations=smooth,
                                          max_time=max_time-elapsed_time(start_time))
@@ -146,36 +122,25 @@ def random_restarts_with_controls(solve_fn, robot, start, goal, distance_fn, sam
                                   restarts=RRT_RESTARTS, smooth=RRT_SMOOTHING,
                                   success_cost=0., max_time=INF, max_solutions=1, **kwargs):
     """
-    :param start: Start configuration - conf
-    :param goal: End configuration - conf
-    :param distance_fn: Distance function - distance_fn(q1, q2)->float
-    :param sample_fn: Sample function - sample_fn()->conf
-    :param extend_fn: Extension function - extend_fn(q1, q2)->[q', ..., q"]
-    :param collision_fn: Collision function - collision_fn(q)->bool
-    :param max_time: Maximum runtime - float
-    :param kwargs: Keyword arguments
-    :return: Paths [[q', ..., q"], [[q'', ..., q""]]
+    This function performs planning using solve_fn and then smoothing.
     """
     start_time = time.time()
     solutions = []
-    # path = check_direct_with_controls(robot, start, goal, extend_fn, collision_fn)
-    # if path is False:
-    #     return None
-    # if path is not None:
-    #     solutions.append(path)
 
     for attempt in irange(restarts + 1):
         if (len(solutions) >= max_solutions) or (elapsed_time(start_time) >= max_time):
             break
         attempt_time = (max_time - elapsed_time(start_time))
+
+        # Planning step
         path = solve_fn(robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
                         max_time=attempt_time, **kwargs)
         if path is None:
             continue
 
-        # input("Path found! Press enter to start smoothing...")
         print("Path found! Press enter to start smoothing...")
 
+        # Smoothing step
         path = smooth_path_with_controls(path, robot, extend_fn, collision_fn, max_iterations=smooth,
                                          max_time=max_time-elapsed_time(start_time))
         solutions.append(path)
@@ -219,16 +184,10 @@ def random_restarts_multi_world(solve_fn, start_state_id, start, goal, distance_
     start_time = time.time()
     solutions = []
     path_lengths = []
-    # path = check_direct(start, goal, extend_fn, collision_fn)
-    # if path is False:
-    #     return None
-    # if path is not None:
-    #     solutions.append(path)
 
-    smooth_attempts = 5
-    max_iterations_per_smoothing = 15
+    smooth_attempts = 10
+    max_iterations_per_smoothing = 20
 
-    # for attempt in irange(restarts + 1):
 
 
     collision_fn, collision_fn_back = collision_fns
@@ -248,13 +207,7 @@ def random_restarts_multi_world(solve_fn, start_state_id, start, goal, distance_
 
         path, node_path = path_data
 
-        # else:
-        #     path, node_path = path_data
-
-        # input("Path found, press enter to start smoothing...")
-
         path_cost = INF
-        # total_ee_path_cost = INF
 
         for smooth_attempt in range(smooth_attempts):
             path_smoothed = smooth_path_multi_world(path, node_path, extend_fn, collision_fn, multi_plant_env,
@@ -263,7 +216,7 @@ def random_restarts_multi_world(solve_fn, start_state_id, start, goal, distance_
 
             # Checking forward path
             flag = 0
-            # input("check forward path...")
+
             print("check forward path...")
             print("=====================================")
             plant_motion_planning.pybullet_tools.utils.restore_state(start_state_id)
@@ -272,27 +225,10 @@ def random_restarts_multi_world(solve_fn, start_state_id, start, goal, distance_
                 plant_motion_planning.pybullet_tools.utils.set_joint_positions(multi_plant_env.envs[env].robot, multi_plant_env.joints, start)
 
             for t in range(2):
-                # s_utils.step_sim_v2()
                 multi_plant_env.step(start)
 
-            # input("press enter to check the forward path!")
             print("press enter to check the forward path!")
 
-            # for q in path_smoothed:
-            #
-            #     pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, q, positionGains=7 * [0.01])
-            #
-            #     for t in range(10):
-            #         s_utils.step_sim()
-            #
-            #     for e, b in enumerate(movable):
-            #         b.observe()
-            #
-            #         print("Deflection of plant %d: %f" % (e, b.deflection))
-            #
-            #         if (b.deflection > 0.5):
-            #             print("Error! Deflection limit exceeded!")
-            #             input("")
             total_ee_path_cost = 0
             prev_ee_pos = np.array(pybullet.getLinkState(multi_plant_env.sample_robot, 9)[0])
 
@@ -304,28 +240,16 @@ def random_restarts_multi_world(solve_fn, start_state_id, start, goal, distance_
 
                 multi_plant_env.step(q)
                 if(collision_fn(q)):
-                    # input("collision detected in forward path... Press enter to abandon current path...")
-                    print("collision detected in forward path... Press enter to abandon current path...")
-                    # for e, b in enumerate(movable):
-                    #     b.observe()
-                    #     print("Deflection of plant %d: %f" % (e, b.deflection))
-                    # import pickle
-                    # with open('path_smoothed.pkl', 'wb') as f:
-                    #     pickle.dump([path_smoothed], f)
 
-                    # input("")
+                    print("collision detected in forward path... Press enter to abandon current path...")
+
                     flag = 1
                     total_ee_path_cost = INF
                     break
 
-                # for e, b in enumerate(movable):
-                #     b.observe()
-                #     print("Deflection of plant %d: %f" % (e, b.deflection))
-
             print("=====================================")
 
             if(flag == 0):
-                # input("forward path checking completed. No issues found")
                 print("forward path checking completed. No issues found")
                 break # Break out of loop if the smoothed path is fine
 
@@ -346,10 +270,6 @@ def random_restarts_multi_world(solve_fn, start_state_id, start, goal, distance_
 
     print("Choosing solution: %d" % (min_index))
 
-
-    # solutions = sorted(solutions, key=lambda path: compute_path_cost(path, distance_fn))
-    # print('Solutions ({}): {} | Time: {:.3f}'.format(len(solutions), [(len(path), round(compute_path_cost(
-    #     path, distance_fn), 3)) for path in solutions], elapsed_time(start_time)))
     return solutions
 
 
@@ -550,16 +470,9 @@ def random_restarts_v6(solve_fn, robot, start_state_id, start, goal, distance_fn
     start_time = time.time()
     solutions = []
     path_lengths = []
-    # path = check_direct(start, goal, extend_fn, collision_fn)
-    # if path is False:
-    #     return None
-    # if path is not None:
-    #     solutions.append(path)
 
     smooth_attempts = 5
     max_iterations_per_smoothing = 100
-
-    # for attempt in irange(restarts + 1):
 
 
     collision_fn, collision_fn_back = collision_fns
@@ -571,6 +484,8 @@ def random_restarts_v6(solve_fn, robot, start_state_id, start, goal, distance_fn
         print("Calculating solution: %d" % (len(solutions) + 1))
 
         attempt_time = (max_time - elapsed_time(start_time))
+        
+        # Find path from start to goal using solve_fn
         path_data = solve_fn(robot, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable,
                              max_time=attempt_time, **kwargs)
 
@@ -579,22 +494,17 @@ def random_restarts_v6(solve_fn, robot, start_state_id, start, goal, distance_fn
 
         path, node_path = path_data
 
-        # else:
-        #     path, node_path = path_data
-
-        # input("Path found, press enter to start smoothing...")
-
         path_cost = INF
-        # total_ee_path_cost = INF
 
         for smooth_attempt in range(smooth_attempts):
+            # Attempt to smooth path
             path_smoothed = smooth_path_v6(robot, path, node_path, extend_fn, collision_fn,
                                            max_iterations=max_iterations_per_smoothing,
                                            max_time=max_time-elapsed_time(start_time))
 
-            # Checking forward path
             flag = 0
-            # input("check forward path...")
+
+            # Checking forward path
             print("check forward path...")
             print("=====================================")
             plant_motion_planning.pybullet_tools.utils.restore_state(start_state_id)
@@ -606,24 +516,6 @@ def random_restarts_v6(solve_fn, robot, start_state_id, start, goal, distance_fn
             for t in range(20):
                 s_utils.step_sim_v2()
 
-            # input("press enter to check the forward path!")
-            print("press enter to check the forward path!")
-
-            # for q in path_smoothed:
-            #
-            #     pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, q, positionGains=7 * [0.01])
-            #
-            #     for t in range(10):
-            #         s_utils.step_sim()
-            #
-            #     for e, b in enumerate(movable):
-            #         b.observe()
-            #
-            #         print("Deflection of plant %d: %f" % (e, b.deflection))
-            #
-            #         if (b.deflection > 0.5):
-            #             print("Error! Deflection limit exceeded!")
-            #             input("")
             total_ee_path_cost = 0
             prev_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
             for q in path_smoothed:
@@ -633,28 +525,15 @@ def random_restarts_v6(solve_fn, robot, start_state_id, start, goal, distance_fn
                 total_ee_path_cost = total_ee_path_cost + np.linalg.norm(cur_ee_pos - prev_ee_pos)
 
                 if(collision_fn(q, True)):
-                    # input("collision detected in forward path... Press enter to abandon current path...")
                     print("collision detected in forward path... Press enter to abandon current path...")
-                    # for e, b in enumerate(movable):
-                    #     b.observe()
-                    #     print("Deflection of plant %d: %f" % (e, b.deflection))
-                    # import pickle
-                    # with open('path_smoothed.pkl', 'wb') as f:
-                    #     pickle.dump([path_smoothed], f)
 
-                    # input("")
                     flag = 1
                     total_ee_path_cost = INF
                     break
 
-                # for e, b in enumerate(movable):
-                #     b.observe()
-                #     print("Deflection of plant %d: %f" % (e, b.deflection))
-
             print("=====================================")
 
             if(flag == 0):
-                # input("forward path checking completed. No issues found")
                 print("forward path checking completed. No issues found")
                 break # Break out of loop if the smoothed path is fine
 
@@ -675,10 +554,6 @@ def random_restarts_v6(solve_fn, robot, start_state_id, start, goal, distance_fn
 
     print("Choosing solution: %d" % (min_index))
 
-
-    # solutions = sorted(solutions, key=lambda path: compute_path_cost(path, distance_fn))
-    # print('Solutions ({}): {} | Time: {:.3f}'.format(len(solutions), [(len(path), round(compute_path_cost(
-    #     path, distance_fn), 3)) for path in solutions], elapsed_time(start_time)))
     return solutions
 
 
@@ -700,16 +575,10 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
     start_time = time.time()
     solutions = []
     path_lengths = []
-    # path = check_direct(start, goal, extend_fn, collision_fn)
-    # if path is False:
-    #     return None
-    # if path is not None:
-    #     solutions.append(path)
 
-    smooth_attempts = 10
+    smooth_attempts = 5
     max_iterations_per_smoothing = 10
 
-    # for attempt in irange(restarts + 1):
 
     collision_fn, collision_fn_back  = collision_fns
 
@@ -720,6 +589,8 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
         print("Calculating solution: %d" % (len(solutions) + 1))
 
         attempt_time = (max_time - elapsed_time(start_time))
+
+        # Find path from start to goal
         path_data = solve_fn(robot, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable,
                         max_time=attempt_time, **kwargs)
 
@@ -728,22 +599,16 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
 
         path, node_path = path_data
 
-        # else:
-        #     path, node_path = path_data
-
-        # input("Path found, press enter to start smoothing...")
-
         path_cost = INF
-        # total_ee_path_cost = INF
 
         for smooth_attempt in range(smooth_attempts):
+            # Find smoothed path given a noisy path
             path_smoothed = smooth_path_v4(robot, path, node_path, extend_fn, collision_fn,
                                            max_iterations=max_iterations_per_smoothing,
                                            max_time=max_time-elapsed_time(start_time))
 
             # Checking forward path
             flag = 0
-            # input("check forward path...")
             print("check forward path...")
             print("=====================================")
             plant_motion_planning.pybullet_tools.utils.restore_state(start_state_id)
@@ -755,24 +620,6 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
             for t in range(20):
                 s_utils.step_sim()
 
-            # input("press enter to check the forward path!")
-            print("press enter to check the forward path!")
-
-            # for q in path_smoothed:
-            #
-            #     pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, q, positionGains=7 * [0.01])
-            #
-            #     for t in range(10):
-            #         s_utils.step_sim()
-            #
-            #     for e, b in enumerate(movable):
-            #         b.observe()
-            #
-            #         print("Deflection of plant %d: %f" % (e, b.deflection))
-            #
-            #         if (b.deflection > 0.5):
-            #             print("Error! Deflection limit exceeded!")
-            #             input("")
             total_ee_path_cost = 0
             prev_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
             for q in path_smoothed:
@@ -782,28 +629,16 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
                 total_ee_path_cost = total_ee_path_cost + np.linalg.norm(cur_ee_pos - prev_ee_pos)
 
                 if(collision_fn(q, True)):
-                    # input("collision detected in forward path... Press enter to abandon current path...")
                     print("collision detected in forward path... Press enter to abandon current path...")
-                    # for e, b in enumerate(movable):
-                    #     b.observe()
-                    #     print("Deflection of plant %d: %f" % (e, b.deflection))
-                    # import pickle
-                    # with open('path_smoothed.pkl', 'wb') as f:
-                    #     pickle.dump([path_smoothed], f)
 
-                    # input("")
                     flag = 1
                     total_ee_path_cost = INF
                     break
 
-                # for e, b in enumerate(movable):
-                #     b.observe()
-                #     print("Deflection of plant %d: %f" % (e, b.deflection))
 
             print("=====================================")
 
             if(flag == 0):
-                # input("forward path checking completed. No issues found")
                 print("forward path checking completed. No issues found")
                 break # Break out of loop if the smoothed path is fine
 
@@ -824,10 +659,6 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
 
     print("Choosing solution: %d" % (min_index))
 
-
-    # solutions = sorted(solutions, key=lambda path: compute_path_cost(path, distance_fn))
-    # print('Solutions ({}): {} | Time: {:.3f}'.format(len(solutions), [(len(path), round(compute_path_cost(
-    #     path, distance_fn), 3)) for path in solutions], elapsed_time(start_time)))
     return solutions
 
 
