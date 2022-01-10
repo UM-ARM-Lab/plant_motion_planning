@@ -25,11 +25,11 @@ used to carry out these tasks. Planning under uncertainty was also considered to
 ## Usage
 - To run the planning algorithm on a randomly generated single-world environment with a single-stemmed plant, run the
 following command:
-```python -m scripts.out_method_v4 -h```
+```python -m scripts.our_method_single_branch -h```
 and add respective arguments as directed in the help prompt. 
 - To run the planning algorithm on a randomly generated single-world environment with a multi-branched plant, run the
 following command:
-```python -m scripts.out_method_v6 -h```
+```python -m scripts.our_method_multi_branch -h```
 and add respective arguments as directed in the help prompt. 
 - To run the planning algorithm on a randomly generated multi-world environment with a multi-branched plant, run the
 following command:
