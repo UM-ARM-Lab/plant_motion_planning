@@ -73,6 +73,8 @@ ROOMBA_URDF = 'models/turtlebot/roomba.urdf'
 TURTLEBOT_URDF = 'models/turtlebot/turtlebot_holonomic.urdf'
 DRAKE_IIWA_URDF = 'models/drake/iiwa_description/urdf/iiwa14_polytope_collision.urdf'
 DRAKE_IIWA_URDF_EDIT = 'models/drake/iiwa_description/urdf/iiwa14_polytope_collision_edit.urdf'
+HDT_MICHIGAN_URDF = "models/husky_custom_description/urdf/mic09_description.urdf"
+
 WSG_50_URDF = 'models/drake/wsg_50_description/urdf/wsg_50_mesh_visual.urdf' # wsg_50 | wsg_50_mesh_visual | wsg_50_mesh_collision
 #SCHUNK_URDF = 'models/drake/wsg_50_description/sdf/schunk_wsg_50.sdf'
 PANDA_HAND_URDF = "models/franka_description/robots/hand.urdf"
@@ -85,7 +87,7 @@ KUKA_IIWA_GRIPPER_SDF = 'kuka_iiwa/kuka_with_gripper.sdf'
 R2D2_URDF = 'r2d2.urdf'
 MINITAUR_URDF = 'quadruped/minitaur.urdf'
 HUMANOID_MJCF = 'mjcf/humanoid.xml'
-HUSKY_URDF = 'husky/husky.urdf'
+#HUSKY_URDF = 'husky/husky.urdf'
 RACECAR_URDF = 'racecar/racecar.urdf' # racecar_differential.urdf
 PR2_GRIPPER = 'pr2_gripper.urdf'
 PANDA_URDF = 'franka_panda/panda.urdf'
