@@ -368,7 +368,7 @@ def smooth_path_v6(robot, path, node_path, extend_fn, collision_fn, distance_fn=
     return refine_waypoints(waypoints, extend_fn)
 
 
-def smooth_path_v4(robot, path, node_path, extend_fn, collision_fn, distance_fn=None, max_iterations=150, max_time=INF, verbose=False):
+def smooth_path_v4(robot, joints, path, node_path, extend_fn, collision_fn, distance_fn=None, max_iterations=150, max_time=INF, verbose=False):
     """
     Smoothing path given a noisy path
     """
@@ -436,10 +436,8 @@ def smooth_path_v4(robot, path, node_path, extend_fn, collision_fn, distance_fn=
 
         flag = 0
         point1_node.restore_state()
-        plant_motion_planning.pybullet_tools.utils.set_joint_positions(robot, plant_motion_planning.pybullet_tools.utils.get_movable_joints(robot),
-                                                                       point1_node.config)
-        pybullet.setJointMotorControlArray(robot, plant_motion_planning.pybullet_tools.utils.get_movable_joints(robot),
-                                           pybullet.POSITION_CONTROL, point1_node.config, positionGains=7 * [0.01])
+        plant_motion_planning.pybullet_tools.utils.set_joint_positions(robot, joints, point1_node.config)
+        pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, point1_node.config, positionGains=len(joints) * [0.01])
         for t in range(10):
             s_utils.step_sim()
 

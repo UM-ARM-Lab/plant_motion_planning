@@ -1501,7 +1501,9 @@ def set_default_camera(yaw=160, pitch=-35, distance=2.5):
 #####################################
 
 def save_state():
-    return p.saveState(physicsClientId=CLIENT)
+    t = time.time()
+    r = p.saveState(physicsClientId=CLIENT)
+    return r
 
 def restore_state(state_id):
     p.restoreState(stateId=state_id, physicsClientId=CLIENT)
@@ -4064,7 +4066,7 @@ def get_collision_fn_with_controls_v2(body, joints, obstacles=[], attachments=[]
             return True
 
         # set_joint_positions(body, joints, q)
-        pybullet.setJointMotorControlArray(body, joints, p.POSITION_CONTROL, q, positionGains=7 * [0.01])
+        pybullet.setJointMotorControlArray(body, joints, p.POSITION_CONTROL, q, positionGains=9 * [0.01])
 
         for t in range(10):
             s_utils.step_sim_v2()
@@ -4117,10 +4119,10 @@ def get_collision_fn_with_controls(body, joints, obstacles=[], attachments=[], s
             return True
 
         # set_joint_positions(body, joints, q)
-        pybullet.setJointMotorControlArray(body, joints, p.POSITION_CONTROL, q, positionGains=7 * [0.01])
+        # pybullet.setJointMotorControlArray(body, joints, p.POSITION_CONTROL, q, positionGains=len(joints) * [0.01])
 
-        for t in range(10):
-            s_utils.step_sim()
+        # for t in range(10):
+        #     s_utils.step_sim()
 
         for attachment in attachments:
             attachment.assign()
@@ -4131,16 +4133,17 @@ def get_collision_fn_with_controls(body, joints, obstacles=[], attachments=[], s
             # Self-collisions should not have the max_distance parameter
             # TODO: self-collisions between body and attached_bodies (except for the link adjacent to the robot)
             if (not use_aabb or aabb_overlap(get_moving_aabb(body), get_moving_aabb(body))) and \
-                    pairwise_link_collision(body, link1, body, link2): #, **kwargs):
+                    pairwise_link_collision(body, link1, body, link2) and \
+                        not(link1 == 37 and link2 == 39): #, **kwargs):
                 #print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
                 if verbose: print(body, link1, body, link2)
                 return True
-
+        print(obstacles)
         for body1, body2 in product(moving_bodies, obstacles):
             if (not use_aabb or aabb_overlap(get_moving_aabb(body1), get_obstacle_aabb(body2))) \
                     and pairwise_collision(body1, body2, **kwargs):
                 #print(get_body_name(body1), get_body_name(body2))
-                if verbose: print(body1, body2)
+                print(body1, body2)
                 return True
         return False
     return collision_fn
@@ -4306,13 +4309,11 @@ def plan_direct_joint_motion(body, joints, end_conf, **kwargs):
 
 
 
-def check_initial_end_with_controls(robot, start_conf, end_conf, collision_fn, verbose=True):
+def check_initial_end_with_controls(robot, joints, start_conf, end_conf, collision_fn, verbose=True):
     # TODO: collision_fn might not accept kwargs
 
-    joints = get_movable_joints(robot)
-
-
     set_joint_positions(robot, joints, start_conf)
+    print("hi 3")
     if collision_fn(start_conf):
         print('Error! Initial configuration is in collision')
         exit()
@@ -4323,7 +4324,7 @@ def check_initial_end_with_controls(robot, start_conf, end_conf, collision_fn, v
     # input("initial config checked")
 
     set_joint_positions(robot, joints, end_conf)
-    p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, end_conf, positionGains=7*[0.01])
+    p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, end_conf, positionGains=9*[0.01])
 
     t = 0
     while(t <= 100):
@@ -4346,6 +4347,7 @@ def check_initial_end_multi_world(robot, start_conf, end_conf, collision_fn, mul
     #     set_joint_positions(multi_world_env.envs[env].robot, multi_world_env.joints, start_conf)
 
     multi_world_env.step(start_conf, True)
+    print("hi 4")
     if collision_fn(start_conf):
         print('Error! Initial configuration is in collision')
         exit()
@@ -4370,12 +4372,13 @@ def check_initial_end_with_controls_v3(robot, start_conf, end_conf, collision_fn
 
     set_joint_positions(robot, single_plant_env.joints, start_conf)
     single_plant_env.step(start_conf)
+    print("hi 5")
     if collision_fn(start_conf):
         print('Error! Initial configuration is in collision')
         exit()
 
     set_joint_positions(robot, single_plant_env.joints, end_conf)
-    p.setJointMotorControlArray(robot, single_plant_env.joints, p.POSITION_CONTROL, end_conf, positionGains=7*[0.01])
+    p.setJointMotorControlArray(robot, single_plant_env.joints, p.POSITION_CONTROL, end_conf, positionGains=9*[0.01])
 
     t = 0
     while(t <= 10):
@@ -4396,6 +4399,7 @@ def check_initial_end_with_controls_v2(robot, start_conf, end_conf, collision_fn
     joints = get_movable_joints(robot)
 
     set_joint_positions(robot, joints, start_conf)
+    print("hi 6")
     if collision_fn(start_conf):
         print('Error! Initial configuration is in collision')
         exit()
@@ -4406,7 +4410,7 @@ def check_initial_end_with_controls_v2(robot, start_conf, end_conf, collision_fn
     # input("initial config checked")
 
     set_joint_positions(robot, joints, end_conf)
-    p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, end_conf, positionGains=7*[0.01])
+    p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, end_conf, positionGains=9*[0.01])
 
     t = 0
     while(t <= 100):
@@ -4422,6 +4426,7 @@ def check_initial_end_with_controls_v2(robot, start_conf, end_conf, collision_fn
 
 def check_initial_end_v4(robot, start_conf, end_conf, collision_fn, verbose=True):
     # TODO: collision_fn might not accept kwargs
+    print("hi 1")
     if collision_fn(start_conf, verbose=verbose):
         print('Error! Initial configuration is in collision')
         exit()
@@ -4452,6 +4457,7 @@ def check_initial_end_v4(robot, start_conf, end_conf, collision_fn, verbose=True
 
 def check_initial_end(start_conf, end_conf, collision_fn, verbose=True):
     # TODO: collision_fn might not accept kwargs
+    print("hi 2")
     if collision_fn(start_conf, verbose=verbose):
         print('Error: initial configuration is in collision')
         exit()
@@ -4555,10 +4561,10 @@ def plan_joint_motion_single_plant(body, joints, end_conf, obstacles=[], attachm
     start_conf = get_joint_positions(body, joints)
 
     # Check initial and final configurations for any constraint violations
-    if not check_initial_end_with_controls(body, start_conf, end_conf, collision_fn):
+    if not check_initial_end_with_controls(body, joints, start_conf, end_conf, collision_fn):
         return None
 
-    return birrt_single_plant(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
+    return birrt_single_plant(body, joints, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
 
 
 
@@ -4614,7 +4620,7 @@ def plan_joint_motion_with_controls(body, joints, end_conf, obstacles=[], attach
     if not check_initial_end_with_controls_v2(body, start_conf, end_conf, collision_fn):
         return None
 
-    return birrt_with_controls(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
+    return birrt_with_controls(body, joints, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
 
 
 def plan_joint_motion_with_angle_constraints_v4(body, start_state_id, joints, end_conf, obstacles=[], attachments=[],
@@ -4674,18 +4680,19 @@ def plan_joint_motion_with_angle_constraints_v4(body, start_state_id, joints, en
 
     # Wait for some time to let the environment settle down
     print("Waiting for the environment to settle...")
-    t = 0
-    while(t <= 100):
-        t = t + 1
-        s_utils.step_sim()
-        time.sleep(0.01)
+    # t = 0
+    # while(t <= 100):
+    #     print(t)
+    #     t = t + 1
+    #     s_utils.step_sim()
+        #time.sleep(0.01)
 
     # Check the initial and final configurations for any constraint violations
-    if not check_initial_end_with_controls(body, start_conf, end_conf, collision_fn):
+    if not check_initial_end_with_controls(body, joints, start_conf, end_conf, collision_fn):
         return None
 
     # Execute Bi-directional RRT
-    return birrt_v4(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn, [collision_fn, collision_fn_back],
+    return birrt_v4(body, start_state_id, joints, start_conf, end_conf, distance_fn, sample_fn, extend_fn, [collision_fn, collision_fn_back],
                     movable, **kwargs)
 
 
@@ -4911,7 +4918,7 @@ def plan_joint_motion_with_angle_constraints_v6(body, start_state_id, joints, en
         return None
 
     # Execute Bi-directional RRT
-    return birrt_v6(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn,
+    return birrt_v6(body, joints, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn,
                     [collision_fn, collision_fn_back], movable, **kwargs)
 
 

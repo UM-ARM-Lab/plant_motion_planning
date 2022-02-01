@@ -21,7 +21,7 @@
   <link name="plant">
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0.3"/>
-      <mass value="10.0"/>
+      <mass value="0.0"/>
       <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
     </inertial>
     <visual>
@@ -62,6 +62,7 @@
   <joint name="rot_y" type="revolute">
     <parent link="base_link"/>
     <child link="v1"/>
+    <mass value="0.0"/>
 <!--    RAISED_HEIGHT of the plant (along z axis)-->
     <origin xyz="0 0 0.10" rpy="0 0 0"/>
     <axis xyz = "0 1 0"/>
@@ -72,6 +73,7 @@
   <joint name="rot_x" type="revolute">
     <parent link="v1"/>
     <child link="plant"/>
+    <mass value="0.0"/>
     <origin xyz="0 0 0.0" rpy="0 0 0"/>
     <axis xyz = "1 0 0"/>
     <dynamics damping="10" friction="0"/>

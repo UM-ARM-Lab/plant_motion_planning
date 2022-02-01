@@ -29,7 +29,7 @@ def wrap_collision_fn(collision_fn):
     return fn
 
 
-def rrt(robot, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fn, movable,
+def rrt(robot, joints, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fn, movable,
                 max_iterations=RRT_ITERATIONS, max_time=INF, **kwargs):
     """
     :param start: Start configuration - conf
@@ -105,7 +105,7 @@ def rrt(robot, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, c
         else:
             target = sample_fn()
 
-        last1, success = extend_towards_with_angle_constraint_v2(tree1, target, distance_fn, extend_fn, collision_fn, movable,
+        last1, success = extend_towards_with_angle_constraint_v2(tree1, joints, target, distance_fn, extend_fn, collision_fn, movable,
                                                            robot, False, **kwargs)
         # last2, success = extend_towards_with_angle_constraint_v2(tree2, last1.config, distance_fn, extend_fn,
         #                                                          collision_fn, movable, robot, not swap, **kwargs)
@@ -476,7 +476,7 @@ def check_forward_path3(robot, path2, collision_fn, nodes1, nodes2):
 
 
 # temp
-def check_forward_path2(robot, path2, collision_fn, nodes1, nodes2):
+def check_forward_path2(robot, joints, path2, collision_fn, nodes1, nodes2):
 
     last_tree1 = nodes1[-1]
     # tree2.append(0)
@@ -484,9 +484,9 @@ def check_forward_path2(robot, path2, collision_fn, nodes1, nodes2):
 
     last_tree1.restore_state()
 
-    pyb_utils.set_joint_positions(robot, pyb_utils.get_movable_joints(robot), last_tree1.config)
-    pybullet.setJointMotorControlArray(robot, pyb_utils.get_movable_joints(robot), pybullet.POSITION_CONTROL,
-                                       last_tree1.config, positionGains=7 * [0.01])
+    pyb_utils.set_joint_positions(robot, joints, last_tree1.config)
+    pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL,
+                                       last_tree1.config, positionGains=len(joints) * [0.01])
 
     for t in range(10):
         s_utils.step_sim()
@@ -901,7 +901,7 @@ def rrt_connect_v7(robot, start, start_state_id, goal, distance_fn, sample_fn, e
     # return None
 
 
-def rrt_connect_v6(robot, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable,
+def rrt_connect_v6(robot, joints, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable,
                    max_iterations=RRT_ITERATIONS, max_time=INF, **kwargs):
     """
     Function to compute the modified bidirectional RRT for a multi branched plant
@@ -965,9 +965,9 @@ def rrt_connect_v6(robot, start, start_state_id, goal, distance_fn, sample_fn, e
             print("Error! Length of tree1 or tree2 = 0")
             input("")
 
-        last1, _ = extend_towards_with_angle_constraint_v4(tree1, target, distance_fn, extend_fn, collision_fn, movable,
+        last1, _ = extend_towards_with_angle_constraint_v4(tree1, joints, target, distance_fn, extend_fn, collision_fn, movable,
                                                            robot, swap, **kwargs)
-        last2, success = extend_towards_with_angle_constraint_v4(tree2, last1.config, distance_fn, extend_fn,
+        last2, success = extend_towards_with_angle_constraint_v4(tree2, joints, last1.config, distance_fn, extend_fn,
                                                                  collision_fn_back, movable, robot, not swap, **kwargs)
 
         if success:
@@ -993,7 +993,7 @@ def rrt_connect_v6(robot, start, start_state_id, goal, distance_fn, sample_fn, e
     return None, None
 
 
-def rrt_connect_v4(robot, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable,
+def rrt_connect_v4(robot, joints, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable,
                    max_iterations=RRT_ITERATIONS, max_time=INF, **kwargs):
     """
     Function to perform modified Bi-RRT computation from start to goal
@@ -1001,9 +1001,8 @@ def rrt_connect_v4(robot, start, start_state_id, goal, distance_fn, sample_fn, e
 
     collision_fn, collision_fn_back = collision_fns
 
-    joints = pyb_tools_utils.get_movable_joints(robot)
     pyb_tools_utils.set_joint_positions(robot, joints, start)
-    pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, start, positionGains=7 * [0.01])
+    pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, start, positionGains=len(joints) * [0.01])
 
     # Wait for some time to let things settle down
     print("RRT: Waiting for the environment to settle...")
@@ -1019,7 +1018,7 @@ def rrt_connect_v4(robot, start, start_state_id, goal, distance_fn, sample_fn, e
         return None
 
     pyb_tools_utils.set_joint_positions(robot, joints, goal)
-    pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, goal, positionGains=7 * [0.01])
+    pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, goal, positionGains=len(joints) * [0.01])
 
     t = 0
     while(t <= 100):
@@ -1039,7 +1038,7 @@ def rrt_connect_v4(robot, start, start_state_id, goal, distance_fn, sample_fn, e
     max_iterations = 2000
 
     for iteration in irange(max_iterations):
-
+        print(iteration)
         s_utils.step_sim()
 
         if elapsed_time(start_time) >= max_time:
@@ -1049,14 +1048,13 @@ def rrt_connect_v4(robot, start, start_state_id, goal, distance_fn, sample_fn, e
         tree1, tree2 = nodes1, nodes2
 
         target = sample_fn()
-
-        last1, _ = extend_towards_with_angle_constraint_v2(tree1, target, distance_fn, extend_fn, collision_fn, movable,
+        last1, _ = extend_towards_with_angle_constraint_v2(tree1, joints, target, distance_fn, extend_fn, collision_fn, movable,
                                                            robot, swap, **kwargs)
-        last2, success = extend_towards_with_angle_constraint_v2(tree2, last1.config, distance_fn, extend_fn,
+        last2, success = extend_towards_with_angle_constraint_v2(tree2, joints, last1.config, distance_fn, extend_fn,
                                                                  collision_fn_back, movable, robot, not swap, **kwargs)
 
         if success:
-
+            print("success")
             path1, path2 = last1.retrace(), last2.retrace()
 
             # path1 - path from source node to last target node
@@ -1064,9 +1062,9 @@ def rrt_connect_v4(robot, start, start_state_id, goal, distance_fn, sample_fn, e
 
             # Reversing path2 so that it starts from last target node and goes all the way till the goal node
             path2 = path2[::-1]
-
+            print("checking forward path")
             # Checking forward path
-            if(check_forward_path2(robot, path2, collision_fn, nodes1, nodes2)):
+            if(check_forward_path2(robot, joints, path2, collision_fn, nodes1, nodes2)):
                 path = configs(path1[:-1] + path2)
                 # TODO: return the trees
                 node_path = path1[:-1] + path2
@@ -1074,7 +1072,7 @@ def rrt_connect_v4(robot, start, start_state_id, goal, distance_fn, sample_fn, e
                 # return path
 
             swap = True
-
+        print("done")
     return None, None
 
 def rrt_connect_v3(robot, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fn, movable,
@@ -1259,7 +1257,7 @@ def birrt_v5(robot, start_state_id, start, goal, distance_fn, sample_fn, extend_
         return None
     return solutions[0]
 
-def birrt_v4(robot, start_state_id, start, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable, **kwargs):
+def birrt_v4(robot, start_state_id, joints, start, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable, **kwargs):
     """
     Modified Bi-directional RRT
 
@@ -1278,8 +1276,8 @@ def birrt_v4(robot, start_state_id, start, goal, distance_fn, sample_fn, extend_
     :return: A path found by BiRRT
     """
 
-    solutions = random_restarts_v4(rrt_connect_v4, robot, start_state_id, start, goal, distance_fn, sample_fn,
-                                   extend_fn, collision_fns, movable, max_solutions=3, **kwargs)
+    solutions = random_restarts_v4(rrt_connect_v4, robot, joints, start_state_id, start, goal, distance_fn, sample_fn,
+                                   extend_fn, collision_fns, movable, max_solutions=1, **kwargs)
 
     if not solutions:
         return None
@@ -1287,7 +1285,7 @@ def birrt_v4(robot, start_state_id, start, goal, distance_fn, sample_fn, extend_
 
 
 
-def birrt_v6(robot, start_state_id, start, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable, **kwargs):
+def birrt_v6(robot, joints, start_state_id, start, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable, **kwargs):
     """
     Modified Bi-directional RRT
 
@@ -1306,7 +1304,7 @@ def birrt_v6(robot, start_state_id, start, goal, distance_fn, sample_fn, extend_
     :return: A path found by BiRRT
     """
 
-    solutions = random_restarts_v6(rrt_connect_v6, robot, start_state_id, start, goal, distance_fn, sample_fn,
+    solutions = random_restarts_v6(rrt_connect_v6, robot, joints, start_state_id, start, goal, distance_fn, sample_fn,
                                    extend_fn, collision_fns, movable, max_solutions=1, **kwargs)
 
     if not solutions:

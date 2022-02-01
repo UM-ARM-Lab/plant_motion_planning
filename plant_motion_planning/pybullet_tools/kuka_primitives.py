@@ -20,6 +20,7 @@ from .utils import get_pose, set_pose, get_movable_joints, \
     plan_joint_motion_with_angle_constraints_v6, plan_joint_motion_with_angle_constraints_v7, \
     plan_joint_motion_single_plant, plan_joint_motion_with_angle_constraints_multi_world, \
     plan_joint_motion_multiworld_benchmark
+from .val_utils import get_arm_joints
 
 # from plant_motion_planning.utils import compute_total_cost, compute_path_cost
 
@@ -92,7 +93,7 @@ class BodyConf(object):
     num = count()
     def __init__(self, body, configuration=None, joints=None):
         if joints is None:
-            joints = get_movable_joints(body)
+            joints = get_arm_joints(body, is_left=True, include_torso=False)
         if configuration is None:
             configuration = get_joint_positions(body, joints)
         self.body = body
@@ -109,8 +110,9 @@ class BodyConf(object):
 
     def assign_with_controls_old(self):
         set_joint_positions(self.body, self.joints, self.configuration)
+        print(self.joints)
         pybullet.setJointMotorControlArray(self.body, self.joints, pybullet.POSITION_CONTROL, self.configuration,
-                                           positionGains=7 * [0.01])
+                                           positionGains=len(self.joints) * [0.01])
         for t in range(10):
             s_utils.step_sim()
 
@@ -118,8 +120,9 @@ class BodyConf(object):
 
     def assign_with_controls(self):
         set_joint_positions(self.body, self.joints, self.configuration)
+        print(self.joints)
         pybullet.setJointMotorControlArray(self.body, self.joints, pybullet.POSITION_CONTROL, self.configuration,
-                                           positionGains=7 * [0.01])
+                                           positionGains=len(self.joints) * [0.01])
         for t in range(10):
             s_utils.step_sim_v2()
 
@@ -152,10 +155,10 @@ class BodyPath(object):
         # TODO: compute and cache these
         # TODO: compute bounding boxes as well
 
-        position_gains = 7 * [0.01]
+        position_gains = len(self.joints) * [0.01]
 
         for i, configuration in enumerate(self.path):
-
+            print(self.joints)
             # set_joint_positions(self.body, self.joints, configuration)
             pybullet.setJointMotorControlArray(self.body, self.joints, pybullet.POSITION_CONTROL, configuration,
                                                positionGains=position_gains)
@@ -172,7 +175,7 @@ class BodyPath(object):
 
     def iterator_multi_world(self, multi_world_env):
 
-        position_gains = 7 * [0.01]
+        position_gains = len(self.joints) * [0.01]
 
         for i, configuration in enumerate(self.path):
 
@@ -191,7 +194,7 @@ class BodyPath(object):
 
     def iterator_with_control_v3(self, single_plant_env):
 
-        position_gains = 7 * [0.01]
+        position_gains = len(self.joints) * [0.01]
 
         for i, configuration in enumerate(self.path):
 
@@ -210,10 +213,9 @@ class BodyPath(object):
 
     def iterator_with_control_v2(self):
 
-        position_gains = 7 * [0.01]
+        position_gains = len(self.joints) * [0.01]
 
         for i, configuration in enumerate(self.path):
-
             # set_joint_positions(self.body, self.joints, configuration)
             pybullet.setJointMotorControlArray(self.body, self.joints, pybullet.POSITION_CONTROL, configuration,
                                                positionGains=position_gains)
@@ -398,7 +400,7 @@ class Command(object):
 
 
 
-    def execute_with_controls(self,robot, init_conf, block, plant_id = [], movable = [],
+    def execute_with_controls(self,robot, joints, init_conf, plant_id = [], movable = [],
                                                     deflection_limit = 0, time_step=0.05):
 
         total_cost = 0
@@ -419,10 +421,10 @@ class Command(object):
 
         prev_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
 
-        joints = get_movable_joints(robot)
-        position_gains = 7 * [0.01]
+        position_gains = len(joints) * [0.01]
 
         set_joint_positions(robot, joints, init_conf)
+        print(joints)
         pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, init_conf,
                                            positionGains=position_gains)
         for t in range(20):
@@ -522,7 +524,7 @@ class Command(object):
         print("====================================================")
 
 
-    def execute_with_controls_v3(self, robot, init_conf, single_plant_env):
+    def execute_with_controls_v3(self, robot, joints, init_conf, single_plant_env):
 
         # distance_fn, alpha = cost_utils
 
@@ -548,8 +550,7 @@ class Command(object):
 
         prev_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
 
-        joints = get_movable_joints(robot)
-        position_gains = 7 * [0.01]
+        position_gains = len(joints) * [0.01]
 
         set_joint_positions(robot, joints, init_conf)
         # pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, init_conf,
@@ -621,7 +622,7 @@ class Command(object):
         print("Total cost: ", total_cost)
         print("====================================================")
 
-    def execute_with_controls_v2(self, robot, init_conf, movable=[],
+    def execute_with_controls_v2(self, robot, joints, init_conf, movable=[],
                               deflection_limit=0):
 
         total_cost = 0
@@ -645,8 +646,7 @@ class Command(object):
 
         prev_ee_pos = np.array(pybullet.getLinkState(robot, 9)[0])
 
-        joints = get_movable_joints(robot)
-        position_gains = 7 * [0.01]
+        position_gains = len(joints) * [0.01]
 
         set_joint_positions(robot, joints, init_conf)
         pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, init_conf,

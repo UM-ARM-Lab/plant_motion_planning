@@ -128,7 +128,7 @@ class SinglePlantEnv(Environment):
 
         if(set_joint_pos):
             pyb_tools_utils.set_joint_positions(self.robot, self.joints, action)
-        p.setJointMotorControlArray(self.robot, self.joints, p.POSITION_CONTROL, action, positionGains=7 * [0.01])
+        p.setJointMotorControlArray(self.robot, self.joints, p.POSITION_CONTROL, action, positionGains=len(self.joints) * [0.01])
 
 
         for i in range(11):
@@ -147,7 +147,7 @@ class SinglePlantEnv(Environment):
 
         if(set_joint_pos):
             pyb_tools_utils.set_joint_positions(self.robot, self.joints, action)
-        p.setJointMotorControlArray(self.robot, self.joints, p.POSITION_CONTROL, action, positionGains=7 * [0.01])
+        p.setJointMotorControlArray(self.robot, self.joints, p.POSITION_CONTROL, action, positionGains=len(self.joints) * [0.01])
 
         return None
 

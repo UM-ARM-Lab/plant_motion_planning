@@ -51,7 +51,7 @@ def check_direct(start, goal, extend_fn, collision_fn):
 #################################################################
 
 
-def random_restarts_single_plant(solve_fn, robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
+def random_restarts_single_plant(solve_fn, robot, joints, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
                                   restarts=RRT_RESTARTS, smooth=RRT_SMOOTHING,
                                   success_cost=0., max_time=INF, max_solutions=1, **kwargs):
     """
@@ -66,7 +66,7 @@ def random_restarts_single_plant(solve_fn, robot, start, goal, distance_fn, samp
         attempt_time = (max_time - elapsed_time(start_time))
         
         # Find a path from start to goal using solve_fn algorithm
-        path = solve_fn(robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
+        path = solve_fn(robot, joints, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
                         max_time=attempt_time, **kwargs)
         if path is None:
             continue
@@ -118,7 +118,7 @@ def random_restarts_multiworld_benchmark(solve_fn, multi_world_env, start, goal,
     return solutions
 
 
-def random_restarts_with_controls(solve_fn, robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
+def random_restarts_with_controls(solve_fn, robot, joints, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
                                   restarts=RRT_RESTARTS, smooth=RRT_SMOOTHING,
                                   success_cost=0., max_time=INF, max_solutions=1, **kwargs):
     """
@@ -133,7 +133,7 @@ def random_restarts_with_controls(solve_fn, robot, start, goal, distance_fn, sam
         attempt_time = (max_time - elapsed_time(start_time))
 
         # Planning step
-        path = solve_fn(robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
+        path = solve_fn(robot, joints, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
                         max_time=attempt_time, **kwargs)
         if path is None:
             continue
@@ -439,7 +439,7 @@ def random_restarts_v7(solve_fn, robot, start_state_id, start, goal, distance_fn
     return solutions
 
 
-def random_restarts_v6(solve_fn, robot, start_state_id, start, goal, distance_fn, sample_fn, extend_fn, collision_fns,
+def random_restarts_v6(solve_fn, robot, joints, start_state_id, start, goal, distance_fn, sample_fn, extend_fn, collision_fns,
                        movable, restarts=RRT_RESTARTS, smooth=RRT_SMOOTHING,
                        success_cost=0., max_time=INF, max_solutions=1, **kwargs):
 
@@ -486,7 +486,7 @@ def random_restarts_v6(solve_fn, robot, start_state_id, start, goal, distance_fn
         attempt_time = (max_time - elapsed_time(start_time))
         
         # Find path from start to goal using solve_fn
-        path_data = solve_fn(robot, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable,
+        path_data = solve_fn(robot, joints, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable,
                              max_time=attempt_time, **kwargs)
 
         if path_data is None or path_data[0] is None:
@@ -512,7 +512,7 @@ def random_restarts_v6(solve_fn, robot, start_state_id, start, goal, distance_fn
             joints = plant_motion_planning.pybullet_tools.utils.get_movable_joints(robot)
             plant_motion_planning.pybullet_tools.utils.set_joint_positions(robot, joints, start)
             pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, start,
-                                               positionGains=7 * [0.01])
+                                               positionGains=len(joints) * [0.01])
             for t in range(20):
                 s_utils.step_sim_v2()
 
@@ -557,7 +557,7 @@ def random_restarts_v6(solve_fn, robot, start_state_id, start, goal, distance_fn
     return solutions
 
 
-def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn, sample_fn, extend_fn, collision_fns,
+def random_restarts_v4(solve_fn, robot, joints, start_state_id, start, goal, distance_fn, sample_fn, extend_fn, collision_fns,
                        movable, restarts=RRT_RESTARTS, smooth=RRT_SMOOTHING,
                        success_cost=0., max_time=INF, max_solutions=2, **kwargs):
     """
@@ -591,7 +591,7 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
         attempt_time = (max_time - elapsed_time(start_time))
 
         # Find path from start to goal
-        path_data = solve_fn(robot, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable,
+        path_data = solve_fn(robot, joints, start, start_state_id, goal, distance_fn, sample_fn, extend_fn, collision_fns, movable,
                         max_time=attempt_time, **kwargs)
 
         if path_data is None or path_data[0] is None:
@@ -603,7 +603,7 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
 
         for smooth_attempt in range(smooth_attempts):
             # Find smoothed path given a noisy path
-            path_smoothed = smooth_path_v4(robot, path, node_path, extend_fn, collision_fn,
+            path_smoothed = smooth_path_v4(robot, joints, path, node_path, extend_fn, collision_fn,
                                            max_iterations=max_iterations_per_smoothing,
                                            max_time=max_time-elapsed_time(start_time))
 
@@ -613,10 +613,9 @@ def random_restarts_v4(solve_fn, robot, start_state_id, start, goal, distance_fn
             print("=====================================")
             plant_motion_planning.pybullet_tools.utils.restore_state(start_state_id)
 
-            joints = plant_motion_planning.pybullet_tools.utils.get_movable_joints(robot)
             plant_motion_planning.pybullet_tools.utils.set_joint_positions(robot, joints, start)
             pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, start,
-                                               positionGains=7 * [0.01])
+                                               positionGains=len(joints) * [0.01])
             for t in range(20):
                 s_utils.step_sim()
 
@@ -722,7 +721,7 @@ def direct_path_with_controls(robot, start, goal, extend_fn, collision_fn):
 
     joints = plant_motion_planning.pybullet_tools.utils.get_movable_joints(robot)
     plant_motion_planning.pybullet_tools.utils.set_joint_positions(robot, joints, start)
-    pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, start, positionGains=7 * [0.01])
+    pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, start, positionGains=len(joints) * [0.01])
 
     for t in range(10):
         s_utils.step_sim()

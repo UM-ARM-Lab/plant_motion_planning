@@ -33,7 +33,7 @@ def extend_towards(tree, target, distance_fn, extend_fn, collision_fn, swap=Fals
     return last, success
 
 
-def extend_towards_fn_single_plant(tree, target, distance_fn, extend_fn, collision_fn, robot, swap=False, tree_frequency=1):
+def extend_towards_fn_single_plant(tree, joints, target, distance_fn, extend_fn, collision_fn, robot, swap=False, tree_frequency=1):
     assert tree_frequency >= 1
 
     # print("Target: ",target, "Target configuration displayed...")
@@ -50,9 +50,9 @@ def extend_towards_fn_single_plant(tree, target, distance_fn, extend_fn, collisi
     # safe = list(takewhile(negate(collision_fn), extend))
 
 
-    pyb_tools_utils.set_joint_positions(robot, pyb_tools_utils.get_movable_joints(robot), extend[0])
-    pybullet.setJointMotorControlArray(robot, pyb_tools_utils.get_movable_joints(robot), pybullet.POSITION_CONTROL, extend[0],
-                                       positionGains=7 * [0.01])
+    pyb_tools_utils.set_joint_positions(robot, joints, extend[0])
+    pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, extend[0],
+                                       positionGains=len(joints) * [0.01])
     for t in range(15):
         s_utils.step_sim()
 
@@ -153,7 +153,7 @@ def extend_towards_multiworld_benchmark(tree, target, distance_fn, extend_fn, co
     success = len(extend) == len(safe)
     return last, success
 
-def extend_towards_with_controls(tree, target, distance_fn, extend_fn, collision_fn, robot, swap=False, tree_frequency=1):
+def extend_towards_with_controls(tree, joints, target, distance_fn, extend_fn, collision_fn, robot, swap=False, tree_frequency=1):
     
     """
     Function to perform extension operation toward target node.
@@ -170,9 +170,9 @@ def extend_towards_with_controls(tree, target, distance_fn, extend_fn, collision
     # safe = list(takewhile(negate(collision_fn), extend))
 
 
-    pyb_tools_utils.set_joint_positions(robot, pyb_tools_utils.get_movable_joints(robot), extend[0])
-    pybullet.setJointMotorControlArray(robot, pyb_tools_utils.get_movable_joints(robot), pybullet.POSITION_CONTROL, extend[0],
-                                       positionGains=7 * [0.01])
+    pyb_tools_utils.set_joint_positions(robot, joints, extend[0])
+    pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL, extend[0],
+                                       positionGains=len(joints) * [0.01])
     for t in range(15):
         s_utils.step_sim_v2()
 
@@ -311,7 +311,7 @@ def extend_towards_with_angle_constraint_v5(tree, target, distance_fn, extend_fn
     success = len(extend) == len(safe)
     return last, success
 
-def extend_towards_with_angle_constraint_v4(tree, target, distance_fn, extend_fn, collision_fn, movable, robot, swap=False, tree_frequency=1):
+def extend_towards_with_angle_constraint_v4(tree, joints, target, distance_fn, extend_fn, collision_fn, movable, robot, swap=False, tree_frequency=1):
     assert tree_frequency >= 1
 
     # print("Target: ",target, "Target configuration displayed...")
@@ -327,10 +327,10 @@ def extend_towards_with_angle_constraint_v4(tree, target, distance_fn, extend_fn
     extend = list(asymmetric_extend(last.config, target, extend_fn, backward=swap))
     # safe = list(takewhile(negate(collision_fn), extend))
 
-    pyb_tools_utils.set_joint_positions(robot, pyb_tools_utils.get_movable_joints(robot), extend[0])
-    pybullet.setJointMotorControlArray(robot, pyb_tools_utils.get_movable_joints(robot), pybullet.POSITION_CONTROL,
+    pyb_tools_utils.set_joint_positions(robot, joints, extend[0])
+    pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL,
                                        extend[0],
-                                       positionGains=7 * [0.01])
+                                       positionGains=len(joints) * [0.01])
     for t in range(10):
         s_utils.step_sim_v2()
 
@@ -366,7 +366,7 @@ def extend_towards_with_angle_constraint_v4(tree, target, distance_fn, extend_fn
     success = len(extend) == len(safe)
     return last, success
 
-def extend_towards_with_angle_constraint_v2(tree, target, distance_fn, extend_fn, collision_fn, movable, robot, swap=False, tree_frequency=1):
+def extend_towards_with_angle_constraint_v2(tree, joints, target, distance_fn, extend_fn, collision_fn, movable, robot, swap=False, tree_frequency=1):
     assert tree_frequency >= 1
 
     # print("Target: ",target, "Target configuration displayed...")
@@ -382,17 +382,16 @@ def extend_towards_with_angle_constraint_v2(tree, target, distance_fn, extend_fn
     extend = list(asymmetric_extend(last.config, target, extend_fn, backward=swap))
     # safe = list(takewhile(negate(collision_fn), extend))
 
-    pyb_tools_utils.set_joint_positions(robot, pyb_tools_utils.get_movable_joints(robot), extend[0])
-    pybullet.setJointMotorControlArray(robot, pyb_tools_utils.get_movable_joints(robot), pybullet.POSITION_CONTROL,
+    pyb_tools_utils.set_joint_positions(robot, joints, extend[0])
+    pybullet.setJointMotorControlArray(robot, joints, pybullet.POSITION_CONTROL,
                                        extend[0],
-                                       positionGains=7 * [0.01])
+                                       positionGains=len(joints) * [0.01])
     for t in range(10):
         s_utils.step_sim()
 
     safe = []
     node_state = []
     for node in extend:
-
         # pyb_tools_utils.step_simulation()
         s_utils.step_sim()
 

@@ -20,7 +20,7 @@ def wrap_collision_fn(collision_fn):
 
 
 
-def rrt_connect_single_plant(robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
+def rrt_connect_single_plant(robot, joints, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
                               max_iterations=RRT_ITERATIONS, max_time=INF, **kwargs):
     """
     Function to perform Bi-RRT from start to goal for a single stemmed plant
@@ -42,11 +42,11 @@ def rrt_connect_single_plant(robot, start, goal, distance_fn, sample_fn, extend_
         target = sample_fn()
 
         # Extend toward newly sampled node
-        last1, _ = extend_towards_fn_single_plant(tree1, target, distance_fn, extend_fn, collision_fn, robot,
+        last1, _ = extend_towards_fn_single_plant(tree1, joints, target, distance_fn, extend_fn, collision_fn, robot,
                                                 swap, **kwargs)
 
         # Extend toward last node created in previous extension operation
-        last2, success = extend_towards_fn_single_plant(tree2, last1.config, distance_fn, extend_fn, collision_fn,
+        last2, success = extend_towards_fn_single_plant(tree2, joints, last1.config, distance_fn, extend_fn, collision_fn,
                                                       robot, not swap, **kwargs)
 
         if success:
@@ -90,7 +90,7 @@ def rrt_connect_multiworld_benchmark(multi_world_env, start, goal, distance_fn, 
             return path
     return None
 
-def rrt_connect_with_controls(robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
+def rrt_connect_with_controls(robot, joints, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
                 max_iterations=RRT_ITERATIONS, max_time=INF, **kwargs):
     """
     This function performs Bi-RRT computation from start to goal and returns a path if possible.
@@ -113,11 +113,11 @@ def rrt_connect_with_controls(robot, start, goal, distance_fn, sample_fn, extend
         target = sample_fn()
 
         # Extend toward newly sampled node 
-        last1, _ = extend_towards_with_controls(tree1, target, distance_fn, extend_fn, collision_fn, robot,
+        last1, _ = extend_towards_with_controls(tree1, joints, target, distance_fn, extend_fn, collision_fn, robot,
                                   swap, **kwargs)
 
         # Extend toward last node in the extension operation performed by other tree
-        last2, success = extend_towards_with_controls(tree2, last1.config, distance_fn, extend_fn, collision_fn,
+        last2, success = extend_towards_with_controls(tree2, joints, last1.config, distance_fn, extend_fn, collision_fn,
                                         robot, not swap, **kwargs)
 
         if success:
@@ -210,7 +210,7 @@ def birrt_multiworld_benchmark(multi_world_env, start, goal, distance_fn, sample
         return None
     return solutions[0]
 
-def birrt_with_controls(robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs):
+def birrt_with_controls(robot, joints, start, goal, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs):
     """
     :param start: Start configuration - conf
     :param goal: End configuration - conf
@@ -223,13 +223,13 @@ def birrt_with_controls(robot, start, goal, distance_fn, sample_fn, extend_fn, c
     """
 
     # Calling a function to perform Bi-RRT planning and then smoothing.
-    solutions = random_restarts_with_controls(rrt_connect_with_controls, robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
+    solutions = random_restarts_with_controls(rrt_connect_with_controls, robot, joints, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
                                 max_solutions=1, **kwargs)
     if not solutions:
         return None
     return solutions[0]
 
-def birrt_single_plant(robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs):
+def birrt_single_plant(robot, joints, start, goal, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs):
     """
     :param start: Start configuration - conf
     :param goal: End configuration - conf
@@ -242,7 +242,7 @@ def birrt_single_plant(robot, start, goal, distance_fn, sample_fn, extend_fn, co
     """
 
     # Planning and smoothing
-    solutions = random_restarts_single_plant(rrt_connect_single_plant, robot, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
+    solutions = random_restarts_single_plant(rrt_connect_single_plant, robot, joints, start, goal, distance_fn, sample_fn, extend_fn, collision_fn,
                                               max_solutions=1, **kwargs)
     if not solutions:
         return None
