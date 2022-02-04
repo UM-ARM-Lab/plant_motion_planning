@@ -31,9 +31,7 @@ directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(directory, '../motion'))
 from plant_motion_planning.motion_planners.motion_planners.rrt_connect import birrt, birrt_with_controls, \
     birrt_single_plant, birrt_multiworld_benchmark
-from plant_motion_planning.motion_planners.motion_planners.rrt_connect_with_angle_constraints_v2 import birrt_v2, \
-    birrt_v3, \
-    birrt_v4, birrt_v6, birrt_v7, birrt_multi_world
+from plant_motion_planning.motion_planners.motion_planners.rrt_connect_with_angle_constraints_v2 import birrt_multi_world
 from plant_motion_planning.motion_planners.motion_planners.meta import direct_path, solve
 
 import plant_motion_planning.utils as s_utils
@@ -851,6 +849,7 @@ def load_pybullet(filename, fixed_base=False, scale=1., **kwargs):
             flags = get_urdf_flags(**kwargs)
             body = p.loadURDF(filename, useFixedBase=fixed_base, flags=flags,
                               globalScaling=scale, physicsClientId=CLIENT)
+            if body == 2: print("loading...", filename)
         elif filename.endswith('.sdf'):
             body = p.loadSDF(filename, physicsClientId=CLIENT)
         elif filename.endswith('.xml'):
@@ -3983,7 +3982,8 @@ def get_collision_fn_with_controls_v3(body, fixed, joints, attachments=[], self_
             # Self-collisions should not have the max_distance parameter
             # TODO: self-collisions between body and attached_bodies (except for the link adjacent to the robot)
             if (not use_aabb or aabb_overlap(get_moving_aabb(body), get_moving_aabb(body))) and \
-                    pairwise_link_collision(body, link1, body, link2): #, **kwargs):
+                    pairwise_link_collision(body, link1, body, link2) and \
+                    not(link1 == 37 and link2 == 39): #, **kwargs):: #, **kwargs):
                 #print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
                 if verbose: print(body, link1, body, link2)
 
@@ -4368,107 +4368,6 @@ def check_initial_end_multi_world(robot, start_conf, end_conf, collision_fn, mul
 
     return True
 
-def check_initial_end_with_controls_v3(robot, start_conf, end_conf, collision_fn, single_plant_env, verbose=True):
-
-    set_joint_positions(robot, single_plant_env.joints, start_conf)
-    single_plant_env.step(start_conf)
-    print("hi 5")
-    if collision_fn(start_conf):
-        print('Error! Initial configuration is in collision')
-        exit()
-
-    set_joint_positions(robot, single_plant_env.joints, end_conf)
-    p.setJointMotorControlArray(robot, single_plant_env.joints, p.POSITION_CONTROL, end_conf, positionGains=9*[0.01])
-
-    t = 0
-    while(t <= 10):
-        t = t + 1
-        # s_utils.step_sim_v2()
-        single_plant_env.step(end_conf)
-
-    if collision_fn(end_conf):
-        print('Error! End configuration is in collision')
-        exit()
-
-    return True
-
-
-def check_initial_end_with_controls_v2(robot, start_conf, end_conf, collision_fn, verbose=True):
-    # TODO: collision_fn might not accept kwargs
-
-    joints = get_movable_joints(robot)
-
-    set_joint_positions(robot, joints, start_conf)
-    print("hi 6")
-    if collision_fn(start_conf):
-        print('Error! Initial configuration is in collision')
-        exit()
-
-    # for t in range(100):
-    #     pybullet.stepSimulation()
-    #
-    # input("initial config checked")
-
-    set_joint_positions(robot, joints, end_conf)
-    p.setJointMotorControlArray(robot, joints, p.POSITION_CONTROL, end_conf, positionGains=9*[0.01])
-
-    t = 0
-    while(t <= 100):
-        t = t + 1
-        s_utils.step_sim_v2()
-
-    if collision_fn(end_conf):
-        print('Error! End configuration is in collision')
-        exit()
-
-    return True
-
-
-def check_initial_end_v4(robot, start_conf, end_conf, collision_fn, verbose=True):
-    # TODO: collision_fn might not accept kwargs
-    print("hi 1")
-    if collision_fn(start_conf, verbose=verbose):
-        print('Error! Initial configuration is in collision')
-        exit()
-
-    # for t in range(100):
-    #     pybullet.stepSimulation()
-    #
-    # input("initial config checked")
-
-    joints = get_movable_joints(robot)
-    set_joint_positions(robot, joints, end_conf)
-
-    # input("temp check...")
-
-    t = 0
-    while(t <= 100):
-        t = t + 1
-        s_utils.step_sim()
-        time.sleep(0.01)
-
-    # input("joints set to goal config. Press enter to check goal config...")
-
-    if collision_fn(end_conf, verbose=verbose):
-        print('Error! End configuration is in collision')
-        exit()
-
-    return True
-
-def check_initial_end(start_conf, end_conf, collision_fn, verbose=True):
-    # TODO: collision_fn might not accept kwargs
-    print("hi 2")
-    if collision_fn(start_conf, verbose=verbose):
-        print('Error: initial configuration is in collision')
-        exit()
-        # return False
-    if collision_fn(end_conf, verbose=verbose):
-        print('Error: end configuration is in collision')
-        exit()
-        # return False
-    return True
-
-
 def plan_joint_motion_with_angle_contraints(body, joints, end_conf, obstacles=[], attachments=[],
                                             movable = [], deflection_limit = 0, self_collisions=True, disabled_collisions=set(),
                                             weights=None, resolutions=None, max_distance=MAX_DISTANCE,
@@ -4591,113 +4490,7 @@ def plan_joint_motion_multiworld_benchmark(body, joints, end_conf, multi_world_e
     return birrt_multiworld_benchmark(multi_world_env, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
 
 
-
-def plan_joint_motion_with_controls(body, joints, end_conf, obstacles=[], attachments=[],
-                                    self_collisions=True, disabled_collisions=set(),
-                                    weights=None, resolutions=None, max_distance=MAX_DISTANCE,
-                                    use_aabb=False, cache=True, custom_limits={}, **kwargs):
-
-    """
-    Method to plan a path to end_conf from the current joint state the arm is in.
-    """
-
-    assert len(joints) == len(end_conf)
-    if (weights is None) and (resolutions is not None):
-        weights = np.reciprocal(resolutions)
-    sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
-    distance_fn = get_distance_fn(body, joints, weights=weights)
-    extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
-    
-    # Collision function to check for collision with obstacles
-    collision_fn = get_collision_fn_with_controls_v2(body, joints, obstacles, attachments, self_collisions,
-                                                  disabled_collisions,
-                                                  custom_limits=custom_limits, max_distance=max_distance,
-                                                  use_aabb=use_aabb, cache=cache)
-
-    start_conf = get_joint_positions(body, joints)
-    
-    # Check if initial and goal configurations are violating any constraints
-    if not check_initial_end_with_controls_v2(body, start_conf, end_conf, collision_fn):
-        return None
-
-    return birrt_with_controls(body, joints, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
-
-
-def plan_joint_motion_with_angle_constraints_v4(body, start_state_id, joints, end_conf, obstacles=[], attachments=[],
-                                               movable = [], deflection_limit = 0, self_collisions=True, disabled_collisions=set(),
-                                               weights=None, resolutions=None, max_distance=MAX_DISTANCE,
-                                               use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
-    """
-    Plan joint motion from present state to end_conf
-
-    :param body: Body ID of the robot
-    :param start_state_id: The saved state ID of the initial state of the environment. This is returned by pybullet
-    when saving the environment.
-    :param joints: List of movable joints in body.
-    :param end_conf: End or target configuration that the arm must reach from its present configuration.
-    :param obstacles: Entities in the environment that the Arm must not collide with.
-    :param attachments: -
-    :param movable: List of entities in our experiment that will be allowed to deflect and move. These are the
-    characterization objects that are found during the creation of the plant.
-    :param deflection_limit: Maximum deflection limit each link is allowed to deflect.
-    :param self_collisions: Flag that toggles self-collisions during simulation.
-    :param disabled_collisions: -
-    :param weights: -
-    :param resolutions: Resolution of extension.
-    :param max_distance: -
-    :param use_aabb: -
-    :param cache: -
-    :param custom_limits: -
-    :param algorithm: Planning algorithm to be used. eg. Vanilla RRT, RRT extend etc.
-    :param kwargs: -
-
-    :return: path between present configuration and end_conf
-    """
-
-    # Sanity checking
-    assert len(joints) == len(end_conf)
-    if (weights is None) and (resolutions is not None):
-        weights = np.reciprocal(resolutions)
-
-    # Sampler
-    sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
-    # Distance function in C-space
-    distance_fn = get_distance_fn(body, joints, weights=weights)
-    # Extension function
-    extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
-    # Collision function that checks for collision with rigid objects and any violations in deflection with movable
-    # objects. This function is used by the forward tree.
-    collision_fn = get_collision_fn_with_angle_constraints_v2(body, joints, obstacles, movable, deflection_limit, attachments, self_collisions, disabled_collisions,
-                                                              custom_limits=custom_limits, max_distance=max_distance,
-                                                              use_aabb=use_aabb, cache=cache)
-    
-    # Collision function for the backward tree
-    collision_fn_back = get_collision_fn_with_angle_constraints_v2(body, joints, obstacles, [], deflection_limit, attachments, self_collisions, disabled_collisions,
-                                                              custom_limits=custom_limits, max_distance=max_distance,
-                                                              use_aabb=use_aabb, cache=cache)
-
-    start_conf = get_joint_positions(body, joints)
-
-    # Wait for some time to let the environment settle down
-    print("Waiting for the environment to settle...")
-    # t = 0
-    # while(t <= 100):
-    #     print(t)
-    #     t = t + 1
-    #     s_utils.step_sim()
-        #time.sleep(0.01)
-
-    # Check the initial and final configurations for any constraint violations
-    if not check_initial_end_with_controls(body, joints, start_conf, end_conf, collision_fn):
-        return None
-
-    # Execute Bi-directional RRT
-    return birrt_v4(body, start_state_id, joints, start_conf, end_conf, distance_fn, sample_fn, extend_fn, [collision_fn, collision_fn_back],
-                    movable, **kwargs)
-
-
-
-def plan_joint_motion_with_angle_constraints_multi_world(body, start_state_id, end_conf, multi_world_env, attachments=[],
+def plan_joint_motion_with_angle_constraints_multi_world(body, start_state_id, start_conf, end_conf, multi_world_env, attachments=[],
                                                self_collisions=True, disabled_collisions=set(), weights=None,
                                                resolutions=None, max_distance=MAX_DISTANCE, use_aabb=False, cache=True,
                                                custom_limits={}, algorithm=None, **kwargs):
@@ -4747,8 +4540,6 @@ def plan_joint_motion_with_angle_constraints_multi_world(body, start_state_id, e
     # rigid objects
     collision_fn_back = multi_world_env.net_constraint_violation_checker_backward
 
-    start_conf = get_joint_positions(multi_world_env.sample_robot, multi_world_env.joints)
-
     # Wait for some time to let the environment settle down
     print("Waiting for the environment to settle...")
     multi_world_env.step(start_conf)
@@ -4761,225 +4552,6 @@ def plan_joint_motion_with_angle_constraints_multi_world(body, start_state_id, e
 
     return birrt_multi_world(start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn,
                     [collision_fn, collision_fn_back], multi_world_env, **kwargs)
-
-
-def plan_joint_motion_with_angle_constraints_v7(body, start_state_id, end_conf, single_plant_env, attachments=[],
-                                               self_collisions=True, disabled_collisions=set(), weights=None,
-                                               resolutions=None, max_distance=MAX_DISTANCE, use_aabb=False, cache=True,
-                                               custom_limits={}, algorithm=None, **kwargs):
-
-    """
-    Plan joint motion from present state to end_conf
-
-    :param body: Body ID of the robot
-    :param start_state_id: The saved state ID of the initial state of the environment. This is returned by pybullet
-    when saving the environment.
-    :param joints: List of movable joints in body.
-    :param end_conf: End or target configuration that the arm must reach from its present configuration.
-    :param obstacles: Entities in the environment that the Arm must not collide with.
-    :param attachments: -
-    :param movable: List of entities in our experiment that will be allowed to deflect and move. These are the
-    characterization objects that are found during the creation of the plant.
-    :param deflection_limit: Maximum deflection limit each link is allowed to deflect.
-    :param self_collisions: Flag that toggles self-collisions during simulation.
-    :param disabled_collisions: -
-    :param weights: -
-    :param resolutions: Resolution of extension.
-    :param max_distance: -
-    :param use_aabb: -
-    :param cache: -
-    :param custom_limits: -
-    :param algorithm: Planning algorithm to be used. eg. Vanilla RRT, RRT extend etc.
-    :param kwargs: -
-
-    :return: path between present configuration and end_conf
-    """
-
-    # Sanity checking
-    assert len(single_plant_env.joints) == len(end_conf)
-    if (weights is None) and (resolutions is not None):
-        weights = np.reciprocal(resolutions)
-
-    # Sampler
-    sample_fn = get_sample_fn(body, single_plant_env.joints, custom_limits=custom_limits)
-    # Distance function in C-space
-    distance_fn = get_distance_fn(body, single_plant_env.joints, weights=weights)
-    # Extension function
-    extend_fn = get_extend_fn(body, single_plant_env.joints, resolutions=resolutions)
-    # Collision function that checks for collision with rigid objects and any violations in deflection with movable
-    # objects. This function is used by the forward tree.
-    collision_fn = get_collision_fn_with_angle_constraints_v4(body, single_plant_env.fixed, single_plant_env.joints,
-                                                              single_plant_env.movable,
-                                                              single_plant_env.deflection_limit, attachments,
-                                                              self_collisions,
-                                                              disabled_collisions,
-                                                              custom_limits=custom_limits, max_distance=max_distance,
-                                                              use_aabb=use_aabb, cache=cache)
-    # collision function for the backward tree. This ignores all plants and only checks if there is any collision with
-    # rigid objects
-    collision_fn_back = get_collision_fn_with_angle_constraints_v4(body, single_plant_env.fixed, single_plant_env.joints,
-                                                                   [], single_plant_env.deflection_limit,
-                                                                   attachments, self_collisions, disabled_collisions,
-                                                                   custom_limits=custom_limits,
-                                                                   max_distance=max_distance,
-                                                                   use_aabb=use_aabb, cache=cache)
-
-
-    start_conf = get_joint_positions(body, single_plant_env.joints)
-
-    # Wait for some time to let the environment settle down
-    print("Waiting for the environment to settle...")
-    t = 0
-    while(t <= 10):
-        t = t + 1
-        # TODO: Possible error
-        single_plant_env.step(start_conf)
-
-
-    # Check the initial and final configurations for any constraint violations
-    if not check_initial_end_with_controls_v3(body, start_conf, end_conf, collision_fn, single_plant_env):
-        return None
-
-    # Execute Bi-directional RRT
-    # return birrt_v6(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn,
-    #                 [collision_fn, collision_fn_back], movable, **kwargs)
-    return birrt_v7(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn,
-                    [collision_fn, collision_fn_back], single_plant_env, **kwargs)
-
-
-def plan_joint_motion_with_angle_constraints_v6(body, start_state_id, joints, end_conf, obstacles=[], attachments=[],
-                                               movable = [], deflection_limit = 0, self_collisions=True, disabled_collisions=set(),
-                                               weights=None, resolutions=None, max_distance=MAX_DISTANCE,
-                                               use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
-
-    """
-    Plan joint motion from present state to end_conf
-
-    :param body: Body ID of the robot
-    :param start_state_id: The saved state ID of the initial state of the environment. This is returned by pybullet
-    when saving the environment.
-    :param joints: List of movable joints in body.
-    :param end_conf: End or target configuration that the arm must reach from its present configuration.
-    :param obstacles: Entities in the environment that the Arm must not collide with.
-    :param attachments: -
-    :param movable: List of entities in our experiment that will be allowed to deflect and move. These are the
-    characterization objects that are found during the creation of the plant.
-    :param deflection_limit: Maximum deflection limit each link is allowed to deflect.
-    :param self_collisions: Flag that toggles self-collisions during simulation.
-    :param disabled_collisions: -
-    :param weights: -
-    :param resolutions: Resolution of extension.
-    :param max_distance: -
-    :param use_aabb: -
-    :param cache: -
-    :param custom_limits: -
-    :param algorithm: Planning algorithm to be used. eg. Vanilla RRT, RRT extend etc.
-    :param kwargs: -
-
-    :return: path between present configuration and end_conf
-    """
-
-    # Sanity checking
-    assert len(joints) == len(end_conf)
-    if (weights is None) and (resolutions is not None):
-        weights = np.reciprocal(resolutions)
-
-    # Sampler
-    sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
-    # Distance function in C-space
-    distance_fn = get_distance_fn(body, joints, weights=weights)
-    # Extension function
-    extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
-    # Collision function that checks for collision with rigid objects and any violations in deflection with movable
-    # objects. This function is used by the forward tree.
-    collision_fn = get_collision_fn_with_angle_constraints_v3(body, joints, obstacles, movable, deflection_limit,
-                                                              attachments, self_collisions, disabled_collisions,
-                                                              custom_limits=custom_limits, max_distance=max_distance,
-                                                              use_aabb=use_aabb, cache=cache)
-    # collision function for the backward tree. This ignores all plants and only checks if there is any collision with
-    # rigid objects
-    collision_fn_back = get_collision_fn_with_angle_constraints_v3(body, joints, obstacles, [], deflection_limit,
-                                                              attachments, self_collisions, disabled_collisions,
-                                                              custom_limits=custom_limits, max_distance=max_distance,
-                                                              use_aabb=use_aabb, cache=cache)
-
-    start_conf = get_joint_positions(body, joints)
-
-    # Wait for some time to let the environment settle down
-    print("Waiting for the environment to settle...")
-    t = 0
-    while(t <= 100):
-        t = t + 1
-        s_utils.step_sim_v2()
-        time.sleep(0.01)
-
-    # Check the initial and final configurations for any constraint violations
-    if not check_initial_end_with_controls_v2(body, start_conf, end_conf, collision_fn):
-        return None
-
-    # Execute Bi-directional RRT
-    return birrt_v6(body, joints, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn,
-                    [collision_fn, collision_fn_back], movable, **kwargs)
-
-
-def plan_joint_motion_with_angle_contraints_v2(body, start_state_id, joints, end_conf, obstacles=[], attachments=[],
-                      movable = [], deflection_limit = 0, self_collisions=True, disabled_collisions=set(),
-                      weights=None, resolutions=None, max_distance=MAX_DISTANCE,
-                      use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
-
-    assert len(joints) == len(end_conf)
-    if (weights is None) and (resolutions is not None):
-        weights = np.reciprocal(resolutions)
-
-    sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
-    distance_fn = get_distance_fn(body, joints, weights=weights)
-    extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
-    collision_fn = get_collision_fn_with_angle_constraints_v2(body, joints, obstacles, movable, deflection_limit, attachments, self_collisions, disabled_collisions,
-                                    custom_limits=custom_limits, max_distance=max_distance,
-                                    use_aabb=use_aabb, cache=cache)
-
-    start_conf = get_joint_positions(body, joints)
-    if not check_initial_end(start_conf, end_conf, collision_fn):
-        return None
-
-    # return rrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
-    # return rrt_with_angle_constraints(start_conf, start_state_id, end_conf, distance_fn, sample_fn, extend_fn,
-    #                                   collision_fn, **kwargs)
-    # return rrt(body, start_conf, start_state_id, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, movable, **kwargs)
-    # return rrt_connect(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, movable, **kwargs)
-    return birrt_v2(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
-                    movable, **kwargs)
-
-
-
-def plan_joint_motion_with_angle_contraints_v3(body, start_state_id, joints, end_conf, obstacles=[], attachments=[],
-                                               movable = [], deflection_limit = 0, self_collisions=True, disabled_collisions=set(),
-                                               weights=None, resolutions=None, max_distance=MAX_DISTANCE,
-                                               use_aabb=False, cache=True, custom_limits={}, algorithm=None, **kwargs):
-
-    assert len(joints) == len(end_conf)
-    if (weights is None) and (resolutions is not None):
-        weights = np.reciprocal(resolutions)
-
-    sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
-    distance_fn = get_distance_fn(body, joints, weights=weights)
-    extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
-    collision_fn = get_collision_fn_with_angle_constraints_v2(body, joints, obstacles, movable, deflection_limit, attachments, self_collisions, disabled_collisions,
-                                                              custom_limits=custom_limits, max_distance=max_distance,
-                                                              use_aabb=use_aabb, cache=cache)
-
-    start_conf = get_joint_positions(body, joints)
-    if not check_initial_end(start_conf, end_conf, collision_fn):
-        return None
-
-    # return rrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
-    # return rrt_with_angle_constraints(start_conf, start_state_id, end_conf, distance_fn, sample_fn, extend_fn,
-    #                                   collision_fn, **kwargs)
-    # return rrt(body, start_conf, start_state_id, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, movable, **kwargs)
-    # return rrt_connect(body, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, movable, **kwargs)
-    return birrt_v3(body, start_state_id, start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn,
-                    movable, **kwargs)
-
 
 def plan_joint_motion2(body, joints, end_conf, obstacles=[], movable = [],
                        force_limit = 0, attachments=[],

@@ -5,7 +5,8 @@ import numpy as np
 import pybullet as p
 import plant_motion_planning.pybullet_tools.utils as pyb_tools_utils
 from plant_motion_planning import cfg
-from plant_motion_planning.pybullet_tools.kuka_primitives import get_free_motion_gen_with_angle_constraints_v6, Command
+from plant_motion_planning.pybullet_tools.kuka_primitives import Command
+from plant_motion_planning.pybullet_tools.val_utils import get_arm_joints
 from plant_motion_planning.utils import generate_random_plant, step_sim_v2, load_plant_from_urdf
 
 
@@ -46,8 +47,8 @@ class SinglePlantEnv(Environment):
                                                              pyb_tools_utils.Euler(yaw=1.57)))
 
         # Load robot model given macro to urdf file and fix its base
-        pose_robot = pyb_tools_utils.Pose(pyb_tools_utils.Point(x=base_offset_xy[0], y=base_offset_xy[1], z=0))
-        self.robot = pyb_tools_utils.load_model(pyb_tools_utils.DRAKE_IIWA_URDF_EDIT, pose=pose_robot, fixed_base = True) # KUKA_IIWA_URDF | DRAKE_IIWA_URDF
+        pose_robot = pyb_tools_utils.Pose(pyb_tools_utils.Point(x=base_offset_xy[0], y=base_offset_xy[1] - 0.5, z=0), pyb_tools_utils.Euler(yaw=np.pi/2))
+        self.robot = pyb_tools_utils.load_model(pyb_tools_utils.HDT_MICHIGAN_URDF, pose=pose_robot, fixed_base = True) # KUKA_IIWA_URDF | DRAKE_IIWA_URDF
 
         if(loadPath is None):
 
@@ -75,7 +76,8 @@ class SinglePlantEnv(Environment):
 
         self.deflection_limit = deflection_limit
 
-        self.joints = pyb_tools_utils.get_movable_joints(self.robot)
+        #self.joints = pyb_tools_utils.get_movable_joints(self.robot)
+        self.joints = get_arm_joints(self.robot, is_left=True, include_torso=False)
 
         # self.joint_list = []
         # self.base_id = []
@@ -137,7 +139,7 @@ class SinglePlantEnv(Environment):
             self._restore_plant_joints()
 
             # stepping through simulation
-            for t in range(200):
+            for t in range(10):
                 pyb_tools_utils.step_simulation()
 
         return None

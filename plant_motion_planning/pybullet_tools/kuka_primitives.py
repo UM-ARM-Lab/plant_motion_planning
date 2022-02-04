@@ -14,11 +14,7 @@ from .utils import get_pose, set_pose, get_movable_joints, \
     inverse_kinematics, pairwise_collision, remove_fixed_constraint, Attachment, get_sample_fn, \
     step_simulation, refine_path, plan_direct_joint_motion, get_joint_positions, wait_if_gui, flatten, \
     pairwise_contact, plan_joint_motion_with_angle_contraints, \
-    plan_joint_motion2, plan_joint_motion_with_angle_contraints_v2, \
-    plan_joint_motion_with_angle_contraints_v3, plan_joint_motion_with_angle_constraints_v4, \
-    plan_joint_motion_with_angle_constraints_v5, plan_joint_motion_with_controls, \
-    plan_joint_motion_with_angle_constraints_v6, plan_joint_motion_with_angle_constraints_v7, \
-    plan_joint_motion_single_plant, plan_joint_motion_with_angle_constraints_multi_world, \
+    plan_joint_motion2, plan_joint_motion_with_angle_constraints_multi_world, \
     plan_joint_motion_multiworld_benchmark
 from .val_utils import get_arm_joints
 
@@ -94,6 +90,7 @@ class BodyConf(object):
     def __init__(self, body, configuration=None, joints=None):
         if joints is None:
             joints = get_arm_joints(body, is_left=True, include_torso=False)
+            #joints = get_movable_joints(body)
         if configuration is None:
             configuration = get_joint_positions(body, joints)
         self.body = body
@@ -1069,73 +1066,6 @@ def get_free_motion_gen_with_controls(robot, fixed=[], teleport=False, self_coll
         return (command,)
     return fn
 
-def get_free_motion_gen_with_angle_constraints(robot, fixed=[], movable = [], deflection_limit = 0, teleport=False, self_collisions=True):
-    def fn(conf1, conf2, fluents=[]):
-        # assert ((conf1.body == conf2.body) and (conf1.joints == conf2.joints))
-        # if teleport:
-        #     path = [conf1.configuration, conf2.configuration]
-
-        conf1.assign()
-        obstacles = fixed + assign_fluent_state(fluents)
-        path = plan_joint_motion_with_angle_contraints(robot, conf2.joints, conf2.configuration, obstacles=obstacles, movable = movable,
-                                                        deflection_limit = deflection_limit, self_collisions=self_collisions)
-
-        if path is None:
-            if DEBUG_FAILURE: wait_if_gui('Free motion failed')
-            return None
-        command = Command([BodyPath(robot, path, joints=conf2.joints)])
-        return (command,)
-
-    return fn
-
-
-def get_free_motion_gen_with_angle_constraints_v4(robot, start_state_id, fixed=[], movable = [], deflection_limit = 0,
-                                                  self_collisions=True):
-    """
-    Method to find a path between two configurations.
-
-    :param robot: Body ID of the robot.
-    :param start_state_id: The saved state ID of the initial state of the environment. This is returned by pybullet
-    when saving the environment.
-    :param fixed: List of entities in our experiment that will be rigid and fixed during the entire simulation.
-    :param movable: List of entities in our experiment that will be allowed to deflect and move. These are the
-    characterization objects that are found during the creation of the plants
-    :param deflection_limit: Maximum deflection limit each link is allowed to deflect.
-    :param self_collisions: Flag that toggles self-collisions during simulation.
-
-    :return: A function that can be used to find a path between two configurations for the given robot and environment.
-    """
-
-    def fn(conf1, conf2):
-        """
-
-        :param conf1: Initial configuration
-        :param conf2: Final configuration
-        :param fluents: fluent states
-
-        :return: A command object that contains the path(s) between the initial and final configurations.
-        """
-
-        # Assign the initial configuration
-        conf1.assign_with_controls_old()
-        obstacles = fixed
-
-        # Plan a path between conf1 and conf2
-        path = plan_joint_motion_with_angle_constraints_v4(robot, start_state_id, conf2.joints, conf2.configuration,
-                                                          obstacles=obstacles, movable=movable,
-                                                          deflection_limit=deflection_limit,
-                                                          self_collisions=self_collisions)
-
-        if path is None:
-            if DEBUG_FAILURE: wait_if_gui('Free motion failed')
-            return None
-        command = Command([BodyPath(robot, path, joints=conf2.joints)])
-        return (command,)
-
-    return fn
-
-
-
 def get_free_motion_gen_with_angle_constraints_multi_world(robot, start_state_id, multi_world_env, self_collisions=True):
 
     """
@@ -1165,7 +1095,7 @@ def get_free_motion_gen_with_angle_constraints_multi_world(robot, start_state_id
 
         multi_world_env.step(conf1.configuration, True)
 
-        path = plan_joint_motion_with_angle_constraints_multi_world(robot, start_state_id, conf2.configuration,
+        path = plan_joint_motion_with_angle_constraints_multi_world(robot, start_state_id, conf1.configuration, conf2.configuration,
                                                           multi_world_env, self_collisions=self_collisions)
 
         if path is None:
@@ -1173,169 +1103,6 @@ def get_free_motion_gen_with_angle_constraints_multi_world(robot, start_state_id
             return None
         command = Command([BodyPath(robot, path, joints=conf2.joints)])
         return (command, )
-
-    return fn
-
-
-def get_free_motion_gen_with_angle_constraints_v7(robot, start_state_id, single_plant_env, self_collisions=True):
-
-    """
-    Method to fina a path between two configurations.
-
-    :param robot: Body ID of the robot.
-    :param start_state_id: The saved state ID of the initial state of the environment. This is returned by pybullet
-    when saving the environment.
-    :param fixed: List of entities in our experiment that will be rigid and fixed during the entire simulation.
-    :param movable: List of entities in our experiment that will be allowed to deflect and move. These are the
-    characterization objects that are found during the creation of the plant
-    :param deflection_limit: Maximum deflection limit each link is allowed to deflect.
-    :param self_collisions: Flag that toggles self-collisions during simulation.
-
-    :return: A function that can be used to find a path between two configurations for the given robot and environment.
-    """
-
-    def fn(conf1, conf2):
-        """
-
-        :param conf1: Initial configuration
-        :param conf2: Final configuration
-        :param fluents: fluent states
-
-        :return: A command object that contains the path(s) between the initial and final configurations.
-        """
-
-        # Assign the initial configuration
-        # obstacles = fixed
-
-        # conf1.assign_with_controls()
-        set_joint_positions(robot, single_plant_env.joints, conf1.configuration)
-        single_plant_env.step(conf1.configuration)
-
-        # Plan a path between conf1 and conf2
-        # path = plan_joint_motion_with_angle_contraints_v6(robot, start_state_id, conf2.joints, conf2.configuration,
-        #                                                   obstacles=obstacles, movable=movable,
-        #                                                   deflection_limit=deflection_limit,
-        #                                                   self_collisions=self_collisions)
-        path = plan_joint_motion_with_angle_constraints_v7(robot, start_state_id, conf2.configuration,
-                                                          single_plant_env, self_collisions=self_collisions)
-
-        if path is None:
-            if DEBUG_FAILURE: wait_if_gui('Free motion failed')
-            return None
-        command = Command([BodyPath(robot, path, joints=conf2.joints)])
-        return (command, )
-
-    return fn
-
-def get_free_motion_gen_with_angle_constraints_v6(robot, start_state_id, fixed=[], movable = [], deflection_limit = 0,
-                                                  self_collisions=True):
-
-    """
-    Method to find a path between two configurations.
-
-    :param robot: Body ID of the robot.
-    :param start_state_id: The saved state ID of the initial state of the environment. This is returned by pybullet
-    when saving the environment.
-    :param fixed: List of entities in our experiment that will be rigid and fixed during the entire simulation.
-    :param movable: List of entities in our experiment that will be allowed to deflect and move. These are the
-    characterization objects that are found during the creation of the plant
-    :param deflection_limit: Maximum deflection limit each link is allowed to deflect.
-    :param self_collisions: Flag that toggles self-collisions during simulation.
-
-    :return: A function that can be used to find a path between two configurations for the given robot and environment.
-    """
-
-    def fn(conf1, conf2, fluents=[]):
-        """
-
-        :param conf1: Initial configuration
-        :param conf2: Final configuration
-        :param fluents: fluent states
-
-        :return: A command object that contains the path(s) between the initial and final configurations.
-        """
-
-        # Assign the initial configuration
-        conf1.assign_with_controls()
-        obstacles = fixed + assign_fluent_state(fluents)
-
-        # Plan a path between conf1 and conf2
-        path = plan_joint_motion_with_angle_constraints_v6(robot, start_state_id, conf2.joints, conf2.configuration,
-                                                          obstacles=obstacles, movable=movable,
-                                                          deflection_limit=deflection_limit,
-                                                          self_collisions=self_collisions)
-
-        if path is None:
-            if DEBUG_FAILURE: wait_if_gui('Free motion failed')
-            return None
-        command = Command([BodyPath(robot, path, joints=conf2.joints)])
-        return (command, )
-
-    return fn
-
-
-def get_free_motion_gen_with_angle_constraints_v5(robot, start_state_id, fixed=[], movable = [], deflection_limit = 0, saved_state = 0,
-                                                  teleport=False, self_collisions=True):
-    def fn(conf1, conf2, fluents=[]):
-        # assert ((conf1.body == conf2.body) and (conf1.joints == conf2.joints))
-        # if teleport:
-        #     path = [conf1.configuration, conf2.configuration]
-
-        conf1.assign()
-        obstacles = fixed + assign_fluent_state(fluents)
-
-        path = plan_joint_motion_with_angle_constraints_v5(robot, start_state_id, conf2.joints, conf2.configuration,
-                                                          obstacles=obstacles, movable=movable,
-                                                          deflection_limit=deflection_limit,
-                                                          self_collisions=self_collisions)
-
-        if path is None:
-            if DEBUG_FAILURE: wait_if_gui('Free motion failed')
-            return None
-        command = Command([BodyPath(robot, path, joints=conf2.joints)])
-        return (command,)
-
-    return fn
-
-def get_free_motion_gen_with_angle_constraints_v2(robot, start_state_id, fixed=[], movable = [], deflection_limit = 0, saved_state = 0,
-                                                  teleport=False, self_collisions=True):
-    def fn(conf1, conf2, fluents=[]):
-        # assert ((conf1.body == conf2.body) and (conf1.joints == conf2.joints))
-        # if teleport:
-        #     path = [conf1.configuration, conf2.configuration]
-
-        conf1.assign()
-        obstacles = fixed + assign_fluent_state(fluents)
-        path = plan_joint_motion_with_angle_contraints_v2(robot, start_state_id, conf2.joints, conf2.configuration, obstacles=obstacles,
-                                                       movable = movable,
-                                                       deflection_limit = deflection_limit, self_collisions=self_collisions)
-        if path is None:
-            if DEBUG_FAILURE: wait_if_gui('Free motion failed')
-            return None
-        command = Command([BodyPath(robot, path, joints=conf2.joints)])
-        return (command,)
-
-    return fn
-
-
-
-def get_free_motion_gen_with_angle_constraints_v3(robot, start_state_id, fixed=[], movable = [], deflection_limit = 0, saved_state = 0,
-                                                  teleport=False, self_collisions=True):
-    def fn(conf1, conf2, fluents=[]):
-        # assert ((conf1.body == conf2.body) and (conf1.joints == conf2.joints))
-        # if teleport:
-        #     path = [conf1.configuration, conf2.configuration]
-
-        conf1.assign()
-        obstacles = fixed + assign_fluent_state(fluents)
-        path = plan_joint_motion_with_angle_contraints_v3(robot, start_state_id, conf2.joints, conf2.configuration, obstacles=obstacles,
-                                                          movable = movable,
-                                                          deflection_limit = deflection_limit, self_collisions=self_collisions)
-        if path is None:
-            if DEBUG_FAILURE: wait_if_gui('Free motion failed')
-            return None
-        command = Command([BodyPath(robot, path, joints=conf2.joints)])
-        return (command,)
 
     return fn
 

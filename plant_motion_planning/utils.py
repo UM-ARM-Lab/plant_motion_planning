@@ -90,7 +90,7 @@ def step_sim_v2():
                                          -kp * plant_rot_joint_displacement_y, 0],
                               flags=p.LINK_FRAME)
 
-    for t in range(200):
+    for t in range(10):
         pyb_tools_utils.step_simulation()
 
 
