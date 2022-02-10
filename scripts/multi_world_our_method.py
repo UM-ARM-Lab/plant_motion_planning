@@ -63,6 +63,8 @@ def main():
 
     p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
 
+    enable_gravity()
+
     # Draw X, Y, Z axes
     draw_global_system()
 
@@ -115,7 +117,6 @@ def main():
     print("Planning completed!")
 
     p.restoreState(saved_world)
-    update_state()
 
     # Save a video of the execution if required
     if(args.video_filename != None):
