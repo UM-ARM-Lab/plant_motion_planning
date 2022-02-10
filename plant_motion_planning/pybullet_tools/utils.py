@@ -19,6 +19,7 @@ import datetime
 import shutil
 import cProfile
 import pstats
+import rospkg
 
 from collections import defaultdict, deque, namedtuple
 from itertools import product, combinations, count, cycle, islice
@@ -44,6 +45,9 @@ try:
     user_input = raw_input
 except NameError:
     user_input = input
+
+ros_root = rospkg.get_ros_root()
+r = rospkg.RosPack()
 
 INF = np.inf
 PI = np.pi
@@ -71,7 +75,7 @@ ROOMBA_URDF = 'models/turtlebot/roomba.urdf'
 TURTLEBOT_URDF = 'models/turtlebot/turtlebot_holonomic.urdf'
 DRAKE_IIWA_URDF = 'models/drake/iiwa_description/urdf/iiwa14_polytope_collision.urdf'
 DRAKE_IIWA_URDF_EDIT = 'models/drake/iiwa_description/urdf/iiwa14_polytope_collision_edit.urdf'
-HDT_MICHIGAN_URDF = "models/husky_custom_description/urdf/mic09_description.urdf"
+HDT_MICHIGAN_URDF = r.get_path('husky_description') + '/urdf/val_pybullet.urdf'
 
 WSG_50_URDF = 'models/drake/wsg_50_description/urdf/wsg_50_mesh_visual.urdf' # wsg_50 | wsg_50_mesh_visual | wsg_50_mesh_collision
 #SCHUNK_URDF = 'models/drake/wsg_50_description/sdf/schunk_wsg_50.sdf'

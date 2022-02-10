@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>plant_motion_planning</name>
+  <version>0.0.0</version>
+  <description>The plant_motion_planning package</description>
+
+  <maintainer email="matt@todo.todo">matt</maintainer>
+
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>rospy</depend>
+
+  <exec_depend>message_runtime</exec_depend>
+
+</package>
