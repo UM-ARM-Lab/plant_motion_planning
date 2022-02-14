@@ -83,6 +83,13 @@ class SinglePlantEnv(Environment):
         #self.joints = pyb_tools_utils.get_movable_joints(self.robot)
         self.joints = get_arm_joints(self.robot, is_left=True, include_torso=False)
 
+        # Get disabled collisions
+        _link_name_to_index = {pyb_tools_utils.get_body_info(self.robot)[0].decode('UTF-8'):-1,}
+        for _id in range(pyb_tools_utils.get_num_joints(self.robot)):
+            _name = pyb_tools_utils.get_joint_info(self.robot,_id).linkName.decode('UTF-8')
+            _link_name_to_index[_name] = _id
+        disabled_collisions = pyb_tools_utils.load_srdf_collisions(pyb_tools_utils.HDT_MICHIGAN_SRDF, _link_name_to_index)
+
         # self.joint_list = []
         # self.base_id = []
 
@@ -90,7 +97,7 @@ class SinglePlantEnv(Environment):
                                                                                        self.movable,
                                                                                        self.deflection_limit, [],
                                                                                        True,
-                                                                                       set(),
+                                                                                       disabled_collisions,
                                                                                        custom_limits={},
                                                                                        max_distance=pyb_tools_utils.MAX_DISTANCE,
                                                                                        use_aabb=False, cache=True)
@@ -99,7 +106,7 @@ class SinglePlantEnv(Environment):
                                                                                        [],
                                                                                        self.deflection_limit, [],
                                                                                        True,
-                                                                                       set(),
+                                                                                       disabled_collisions,
                                                                                        custom_limits={},
                                                                                        max_distance=pyb_tools_utils.MAX_DISTANCE,
                                                                                        use_aabb=False, cache=True)

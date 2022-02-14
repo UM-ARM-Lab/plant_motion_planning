@@ -19,6 +19,7 @@ import datetime
 import shutil
 import cProfile
 import pstats
+import re
 import rospkg
 
 from collections import defaultdict, deque, namedtuple
@@ -76,6 +77,7 @@ TURTLEBOT_URDF = 'models/turtlebot/turtlebot_holonomic.urdf'
 DRAKE_IIWA_URDF = 'models/drake/iiwa_description/urdf/iiwa14_polytope_collision.urdf'
 DRAKE_IIWA_URDF_EDIT = 'models/drake/iiwa_description/urdf/iiwa14_polytope_collision_edit.urdf'
 HDT_MICHIGAN_URDF = r.get_path('husky_custom_description') + '/urdf/val_pybullet_description.urdf'
+HDT_MICHIGAN_SRDF = r.get_path('hdt_michigan_moveit') + '/config/hdt_michigan_with_husky.srdf'
 
 WSG_50_URDF = 'models/drake/wsg_50_description/urdf/wsg_50_mesh_visual.urdf' # wsg_50 | wsg_50_mesh_visual | wsg_50_mesh_collision
 #SCHUNK_URDF = 'models/drake/wsg_50_description/sdf/schunk_wsg_50.sdf'
@@ -867,6 +869,15 @@ def load_pybullet(filename, fixed_base=False, scale=1., **kwargs):
             raise ValueError(filename)
     INFO_FROM_BODY[CLIENT, body] = ModelInfo(None, filename, fixed_base, scale)
     return body
+
+def load_srdf_collisions(srdf_file, link_name_to_index):
+    srdf_string = open(srdf_file).read()
+    regex = r'<\s*disable_collisions\s+link1="(\w+)"\s+link2="(\w+)"\s+reason="(\w+)"\s*/>'
+    disabled_collisions = []
+    for link1, link2, reason in re.findall(regex, srdf_string):
+        if link1 in link_name_to_index and link2 in link_name_to_index:
+            disabled_collisions.append((link_name_to_index[link1], link_name_to_index[link2]))
+    return disabled_collisions
 
 def set_caching(cache=False):
     # enableFileCaching: Set to 0 to disable file caching, such as .obj wavefront file loading
@@ -3986,8 +3997,7 @@ def get_collision_fn_with_controls_v3(body, fixed, joints, attachments=[], self_
             # Self-collisions should not have the max_distance parameter
             # TODO: self-collisions between body and attached_bodies (except for the link adjacent to the robot)
             if (not use_aabb or aabb_overlap(get_moving_aabb(body), get_moving_aabb(body))) and \
-                    pairwise_link_collision(body, link1, body, link2) and \
-                    not(link1 == 37 and link2 == 39): #, **kwargs):: #, **kwargs):
+                    pairwise_link_collision(body, link1, body, link2): #, **kwargs):: #, **kwargs):
                 #print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
                 if verbose: print(body, link1, body, link2)
 
@@ -4351,7 +4361,6 @@ def check_initial_end_multi_world(robot, start_conf, end_conf, collision_fn, mul
     #     set_joint_positions(multi_world_env.envs[env].robot, multi_world_env.joints, start_conf)
 
     multi_world_env.step(start_conf, True)
-    print("hi 4")
     if collision_fn(start_conf):
         print('Error! Initial configuration is in collision')
         exit()
