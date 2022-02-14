@@ -47,8 +47,12 @@ class SinglePlantEnv(Environment):
                                                              pyb_tools_utils.Euler(yaw=1.57)))
 
         # Load robot model given macro to urdf file and fix its base
-        pose_robot = pyb_tools_utils.Pose(pyb_tools_utils.Point(x=base_offset_xy[0], y=base_offset_xy[1] - 0.5, z=0.1), pyb_tools_utils.Euler(yaw=np.pi/2))
+        pose_robot = pyb_tools_utils.Pose(pyb_tools_utils.Point(x=base_offset_xy[0] + 0.02, y=base_offset_xy[1] - 0.31, z=0.2), pyb_tools_utils.Euler(yaw=np.pi/2))
         self.robot = pyb_tools_utils.load_model(pyb_tools_utils.HDT_MICHIGAN_URDF, pose=pose_robot, fixed_base = False) # KUKA_IIWA_URDF | DRAKE_IIWA_URDF
+
+        # Let robot fall to ground before loading in plants
+        for t in range(0, 50):
+            pyb_tools_utils.step_simulation()
 
         if(loadPath is None):
 
@@ -192,6 +196,11 @@ class MultiPlantWorld(Environment):
         self.fixed = self.envs[(xs[0], ys[0])].fixed
         self.deflection_limit = self.envs[(xs[0], ys[0])].deflection_limit
 
+    def step_no_action(self):
+        for t in range(200):
+            for xy, env in self.envs.items():
+                env._restore_plant_joints()
+            pyb_tools_utils.step_simulation()
 
     def step(self, action, set_joint_pos=False):
         for xy, env in self.envs.items():

@@ -3991,7 +3991,7 @@ def get_collision_fn_with_controls_v3(body, fixed, joints, attachments=[], self_
                 #print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
                 if verbose: print(body, link1, body, link2)
 
-                print("Collision detected!")
+                print("Self collision detected!")
 
                 return True
 
@@ -4000,7 +4000,7 @@ def get_collision_fn_with_controls_v3(body, fixed, joints, attachments=[], self_
                     and pairwise_collision(body1, body2, **kwargs):
                 #print(get_body_name(body1), get_body_name(body2))
                 if verbose: print(body1, body2)
-                print("Collision detected!")
+                print("Obstacle collision detected!")
                 return True
         return False
     return collision_fn
