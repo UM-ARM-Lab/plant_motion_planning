@@ -106,8 +106,8 @@ def main():
                                       total_num_extensions, plant_pos_xy_limits, physicsClientId=cli)
 
     # Reinitialize random generator
-    np.random.seed()
-    random.seed()
+    # np.random.seed()
+    # random.seed()
 
     planner = Planner()
 

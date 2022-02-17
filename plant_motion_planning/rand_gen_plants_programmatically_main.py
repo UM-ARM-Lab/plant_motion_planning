@@ -16,7 +16,8 @@ from plant_motion_planning.representation import TwoAngleRepresentation, TwoAngl
 
 
 scaling_factor = 0.25
-stem_base_spacing = scaling_factor * 0.2
+#stem_base_spacing = scaling_factor * 0.2
+stem_base_spacing = 0
 
 # Variables to keep track of indices
 current_index = 0
