@@ -1,6 +1,9 @@
 # from random import random
 
+from email.mime import base
+from operator import length_hint
 import random
+from matplotlib.pyplot import axis
 
 import numpy as np
 import pybullet as p
@@ -39,16 +42,7 @@ def create_stem_element(stem_half_length, stem_half_width):
         p.GEOM_BOX, halfExtents=[stem_half_length, stem_half_width, stem_half_height[current_index]],
     )
 
-    col_v1_id = p.createCollisionShape(
-        p.GEOM_BOX, halfExtents=[0, 0, 0],
-        collisionFramePosition=[0, 0, 0.0]
-    )
-    vis_v1_id = p.createCollisionShape(
-        p.GEOM_BOX, halfExtents=[0, 0, 0]
-        # collisionFramePosition=[0, 0, 0]
-    )
-
-    return [col_v1_id, col_stem_id], [vis_v1_id, vis_stem_id]
+    return col_stem_id, vis_stem_id
 
 def intersection_with_others(x, y, history, tolerance=0.03):
     if(len(history) == 0):
@@ -138,9 +132,8 @@ def create_plant_params(num_branches_per_stem,
             vert_stem_count = 1
             ith_stem = 1
 
-            # Increment by 2 as 2 links have been added with the creating of a stem - v1 and the stem itself
-            current_index = current_index + 2
-            indices = indices + [main_stem_index, current_index - 1]
+            current_index = current_index + 1
+            indices.append(main_stem_index)
             main_stem_index = current_index
             main_stem_indices.append(main_stem_index)
 
@@ -164,10 +157,10 @@ def create_plant_params(num_branches_per_stem,
 
                 v1_ori = p.getQuaternionFromEuler((roll, pitch, 0.0))
 
-                indices = indices + [current_index, current_index + 1]
-                current_index = current_index + 2
+                indices.append(current_index)
+                current_index = current_index + 1
 
-                link_parent_indices[current_index-1] = current_index - 2 - 1
+                link_parent_indices[current_index-1] = current_index - 2
 
                 if(num_extensions == total_num_extensions):
                     branch_count = branch_count + 1
@@ -214,8 +207,8 @@ def create_plant_params(num_branches_per_stem,
 
                 v1_ori = p.getQuaternionFromEuler((roll, pitch, yaw))
 
-                current_index = current_index + 2
-                indices = indices + [main_stem_index, current_index - 1]
+                current_index = current_index + 1
+                indices.append(current_index - 1)
 
                 link_parent_indices[current_index-1] = main_stem_index - 1
 
@@ -244,8 +237,8 @@ def create_plant_params(num_branches_per_stem,
             yaw = np.random.uniform(low=-0.4, high=0.4)
             v1_ori = p.getQuaternionFromEuler((roll, pitch, yaw))
 
-            current_index = current_index + 2
-            indices = indices + [main_stem_index, current_index - 1]
+            current_index = current_index + 1
+            indices.append(current_index - 1)
             link_parent_indices[current_index-1] = main_stem_index - 1
 
             main_stem_index = current_index
@@ -254,22 +247,22 @@ def create_plant_params(num_branches_per_stem,
             base_points[current_index-1] = [base_pos_xy[0], base_pos_xy[1], v1_pos[2]]
 
 
-        link_mass = [0, 10]
+        link_mass = 10
         col_stem_id, vis_stem_id = create_stem_element(stem_half_length, stem_half_width)
 
         # link_Masses  = link_Masses + [link_mass, link_mass]
-        link_Masses  = link_Masses + link_mass
-        linkCollisionShapeIndices = linkCollisionShapeIndices + col_stem_id
-        linkVisualShapeIndices = linkVisualShapeIndices + vis_stem_id
+        link_Masses.append(link_mass)
+        linkCollisionShapeIndices.append(col_stem_id)
+        linkVisualShapeIndices.append(vis_stem_id)
 
-        linkPositions = linkPositions + [v1_pos, [0, 0, 0]]
-        linkOrientations = linkOrientations + [v1_ori, [0, 0, 0, 1]]
+        linkPositions.append(v1_pos)
+        linkOrientations.append(v1_ori)
 
-        linkInertialFramePositions = linkInertialFramePositions + [[0, 0, 0], [0, 0, scaling_factor * 1]]
-        linkInertialFrameOrientations = linkInertialFrameOrientations + [[0, 0, 0, 1], [0, 0, 0, 1]]
+        linkInertialFramePositions.append([0, 0, 0])
+        linkInertialFrameOrientations.append([0, 0, 0, 1])
 
-        jointTypes = jointTypes + [p.JOINT_REVOLUTE, p.JOINT_REVOLUTE]
-        axis = axis + [[1, 0, 0], [0, 1, 0]]
+        jointTypes.append(p.JOINT_SPHERICAL)
+        axis.append([1, 0, 0])
 
 
     return [base_mass, col_base_id, vis_base_id, base_pos, base_ori], [link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions,
@@ -292,7 +285,11 @@ def create_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_e
 
     link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, linkOrientations, \
     linkInertialFramePositions, linkInertialFrameOrientations, indices, jointTypes, axis = stems_params
-
+    print(linkPositions)
+    #print(len(link_Masses), len(linkCollisionShapeIndices), len(linkVisualShapeIndices), len(linkPositions), len(linkOrientations), len(linkInertialFrameOrientations), len(linkInertialFrameOrientations), len(indices), len(jointTypes))
+    # print(link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, linkOrientations, \
+    # linkInertialFramePositions, linkInertialFrameOrientations, indices, jointTypes)
+    # input()
     base_id = p.createMultiBody(
         base_mass, col_base_id, vis_base_id, base_pos, base_ori,
         linkMasses=link_Masses, linkCollisionShapeIndices=linkCollisionShapeIndices,
@@ -303,9 +300,22 @@ def create_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_e
     )
 
     for j in range(-1, p.getNumJoints(base_id)):
-        p.changeDynamics(base_id, j, jointLowerLimit=-1.5, jointUpperLimit=1.5, jointDamping=10, linearDamping=1.5)
+        p.changeDynamics(base_id, j, jointDamping=10, linearDamping=1.5)
+        if j != -1:
+            print(p.getJointStateMultiDof(base_id, j))
 
     joint_list = indices
+
+    forces = len(joint_list) * [(np.inf, np.inf, 0)]
+    forces[0] = (0, 0, 0)
+    forces[1] = (0, 0, 0)
+    # enable plant
+    p.setJointMotorControlMultiDofArray(base_id, joint_list, p.POSITION_CONTROL, targetPositions=len(joint_list) * [(0, 0, 0, 1)], positionGains=len(joint_list) * [1.0], forces=len(joint_list) * [(500, 500, 500)], maxVelocities=0.5)
+    #p.setJointMotorControlMultiDofArray(base_id, joint_list, p.VELOCITY_CONTROL, targetVelocities=len(joint_list) * [], velocityGains=len(joint_list) * [1.0], forces=len(joint_list) * [(1000, 1000, 1000)])
+
+    # for l in range(-1, p.getNumJoints(base_id)):
+    #     p.changeDynamics(base_id, l, maxJointVelocity=0.25)
+    #     p.setJointMotorControlMultiDof(base_id, j, p.POSITION_CONTROL, targetPosition=(0, 0, 0, 1), positionGain=1.0, maxVelocity=0.5)
 
     return base_id, joint_list, main_stem_indices, base_points, base_pos, link_parent_indices
 
@@ -323,41 +333,27 @@ if __name__ == "__main__":
     p.createCollisionShape(p.GEOM_PLANE)
     p.createMultiBody(0, 0)
 
-    num_branches_per_stem = 0
+    np.random.seed(1)
+    random.seed(1)
+
+    num_branches_per_stem = 1
     total_num_vert_stems = 3
     total_num_extensions = 1
     stem_half_length = 0.1
     stem_half_width = 0.1
 
-    base_params, stems_params, main_stem_indices = create_plant_params(num_branches_per_stem, total_num_vert_stems,
+    base_id, joint_list, main_stem_indices, base_points, base_pos, link_parent_indices = create_random_plant(num_branches_per_stem, total_num_vert_stems,
                                                                        total_num_extensions, [0.4, 0.4])
-
-
-    base_mass, col_base_id, vis_base_id, base_pos, base_ori = base_params
-
-    link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, linkOrientations, \
-        linkInertialFramePositions, linkInertialFrameOrientations, indices, jointTypes, axis = stems_params
-
-
-    base_id = p.createMultiBody(
-        base_mass, col_base_id, vis_base_id, base_pos, base_ori,
-        linkMasses=link_Masses, linkCollisionShapeIndices=linkCollisionShapeIndices,
-        linkVisualShapeIndices=linkVisualShapeIndices, linkPositions=linkPositions,
-        linkOrientations=linkOrientations, linkInertialFramePositions=linkInertialFramePositions,
-        linkInertialFrameOrientations=linkInertialFrameOrientations, linkParentIndices=indices,
-        linkJointTypes=jointTypes, linkJointAxis=axis
-    )
 
     # print("base pos: ", base_pos)
     # print("base point: ", base_points)
     # input("")
 
-    for j in range(-1, p.getNumJoints(base_id)):
-        p.changeDynamics(base_id, j, jointLowerLimit=-1.0, jointUpperLimit=1.0, jointDamping=10, linearDamping=1.5)
+    #for j in range(-1, p.getNumJoints(base_id)):
+        #p.changeDynamics(base_id, j, jointLowerLimit=-1.0, jointUpperLimit=1.0, jointDamping=10, linearDamping=1.5)
 
-    joint_list = indices
-    p.setJointMotorControlArray(base_id, joint_list, p.VELOCITY_CONTROL, targetVelocities=len(joint_list) * [0],
-                                forces=len(joint_list) * [1e-1])  # make plant responsive to external force
+    #p.setJointMotorControlArray(base_id, joint_list, p.VELOCITY_CONTROL, targetVelocities=len(joint_list) * [0],
+    #                            forces=len(joint_list) * [1e-1])  # make plant responsive to external force
 
 
     time_limit = 20
@@ -385,31 +381,33 @@ if __name__ == "__main__":
         # if(time.time() - time_elapsed > time_limit):
         #     break
 
-        kp = 3000
-        kd = 50
+        kp = 500
+        kd = 100
 
 
-        # External torque added by considering joint indices in the opposite direction
-        for i, joint_idx in enumerate(range(len(joint_list)-1,0, -2)):
+        # # External torque added by considering joint indices in the opposite direction
+        # for i, joint_idx in enumerate(range(len(joint_list)-1,0, -2)):
 
-            plant_rot_joint_displacement_y, _, plant_hinge_x_reac, _ = p.getJointState(base_id, joint_idx)
-            plant_rot_joint_displacement_x, _, plant_hinge_y_reac, _ = p.getJointState(base_id, joint_idx - 1)
+        #     plant_rot_joint_displacement_y, _, plant_hinge_x_reac, _ = p.getJointState(base_id, joint_idx)
+        #     plant_rot_joint_displacement_x, _, plant_hinge_y_reac, _ = p.getJointState(base_id, joint_idx - 1)
 
-            diffy = plant_rot_joint_displacement_y - prev_plant_rot_joint_displacement_y[i]
-            diffx = plant_rot_joint_displacement_x - prev_plant_rot_joint_displacement_x[i]
+        #     diffy = plant_rot_joint_displacement_y - prev_plant_rot_joint_displacement_y[i]
+        #     diffx = plant_rot_joint_displacement_x - prev_plant_rot_joint_displacement_x[i]
 
-            prev_plant_rot_joint_displacement_y[i], prev_plant_rot_joint_displacement_x[i] = plant_rot_joint_displacement_y, \
-                                                                                             plant_rot_joint_displacement_x
+        #     prev_plant_rot_joint_displacement_y[i], prev_plant_rot_joint_displacement_x[i] = plant_rot_joint_displacement_y, \
+        #                                                                                      plant_rot_joint_displacement_x
 
-            p.applyExternalTorque(base_id, linkIndex=joint_idx,
-                                  torqueObj=[-kp * plant_rot_joint_displacement_x + kd * diffx,
-                                             -kp * plant_rot_joint_displacement_y + kd * diffy, 0],
-                                  flags=p.LINK_FRAME)
+        #     p.applyExternalTorque(base_id, linkIndex=joint_idx,
+        #                           torqueObj=[-kp * plant_rot_joint_displacement_x + kd * diffx,
+        #                                      -kp * plant_rot_joint_displacement_y + kd * diffy, 0],
+        #                           flags=p.LINK_FRAME)
 
-            # kp = kp - 100
+        #     kp = kp - 100
 
-        base_rep.observe_all()
-        print(base_rep.deflections)
+        # base_rep.observe_all()
+        # print(base_rep.deflections)
+        for j in range(p.getNumJoints(base_id)):
+            print(j, p.getJointStateMultiDof(base_id, j)[3])
 
         p.stepSimulation()
         time.sleep(1/240.0)

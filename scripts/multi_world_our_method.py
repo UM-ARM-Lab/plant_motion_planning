@@ -91,7 +91,7 @@ def main():
 
     # Generate a new plant whose number of branches, number of stems, natural deflections etc. are randomly sampled
     num_branches_per_stem = 1
-    total_num_vert_stems = 2
+    total_num_vert_stems = 3
     total_num_extensions = 1
 
     # initialize deflection limit from arguments input
