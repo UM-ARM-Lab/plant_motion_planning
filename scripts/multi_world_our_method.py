@@ -19,7 +19,7 @@ import pybullet_data
 from plant_motion_planning import cfg
 from plant_motion_planning.env import SinglePlantEnv, MultiPlantWorld
 from plant_motion_planning.planner import Planner
-from plant_motion_planning.pybullet_tools.kuka_primitives import BodyConf, Command, get_free_motion_gen_with_angle_constraints_v6
+from plant_motion_planning.pybullet_tools.kuka_primitives import BodyConf, Command
 from plant_motion_planning.pybullet_tools.utils import enable_gravity, connect, dump_world, set_pose, \
     draw_global_system, set_camera_pose, Pose, Point, Euler, BLOCK_URDF, load_model, disconnect, update_state, \
     disable_real_time, HideOutput, DRAKE_IIWA_URDF_EDIT, save_state, set_joint_positions, get_movable_joints
@@ -42,10 +42,9 @@ args = parser.parse_args()
 
 
 # Initial configuration of the Arm
-init_conf = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+init_conf = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 # Final configuration of the Arm
-goal_conf = (-1.3871757013351371, 1.6063773991870438, 2.152853076950719, -1.0638334445672613, -0.1398096715085235,
-             1.9391079682303638, -1.051507203470595)
+goal_conf = (0.0, -0.1, 0.0, -0.7, 0.0, 0.0, 0.0, 0.0, 0.0)
 
 
 def main():
@@ -64,6 +63,8 @@ def main():
 
     p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
 
+    enable_gravity()
+
     # Draw X, Y, Z axes
     draw_global_system()
 
@@ -73,7 +74,7 @@ def main():
     np.random.seed(1)
     random.seed(1)
     # Base position in X and Y
-    plant_pos_xy_limits = ((0, 0.35), (-0.5, 0.0))
+    plant_pos_xy_limits = ((0, 0), (0.35, 0.35))
 
 
     # Env2
@@ -94,19 +95,18 @@ def main():
     total_num_extensions = 1
 
     # initialize deflection limit from arguments input
-    deflection_limit = 0.30
+    deflection_limit = 2.0
 
     # Base offset X and Y
-    base_offset_xs = (0, 5)
-    base_offset_ys = (0, 5)
+    base_offset_xs = [0]
+    base_offset_ys = [0]
 
     # Generate random plant for each world
     multi_world_env = MultiPlantWorld(base_offset_xs, base_offset_ys, deflection_limit, num_branches_per_stem, total_num_vert_stems,
                                       total_num_extensions, plant_pos_xy_limits, physicsClientId=cli)
-
     # Reinitialize random generator
-    np.random.seed()
-    random.seed()
+    # np.random.seed()
+    # random.seed()
 
     planner = Planner()
 
@@ -116,7 +116,6 @@ def main():
     print("Planning completed!")
 
     p.restoreState(saved_world)
-    update_state()
 
     # Save a video of the execution if required
     if(args.video_filename != None):

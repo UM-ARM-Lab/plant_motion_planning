@@ -16,7 +16,8 @@ from plant_motion_planning.representation import TwoAngleRepresentation, TwoAngl
 
 
 scaling_factor = 0.25
-stem_base_spacing = scaling_factor * 0.2
+#stem_base_spacing = scaling_factor * 0.2
+stem_base_spacing = 0
 
 # Variables to keep track of indices
 current_index = 0
@@ -300,11 +301,10 @@ def create_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_e
         linkInertialFrameOrientations=linkInertialFrameOrientations, linkParentIndices=indices,
         linkJointTypes=jointTypes, linkJointAxis=axis
     )
+    joint_list = indices
 
     for j in range(-1, p.getNumJoints(base_id)):
         p.changeDynamics(base_id, j, jointLowerLimit=-1.5, jointUpperLimit=1.5, jointDamping=10, linearDamping=1.5)
-
-    joint_list = indices
 
     return base_id, joint_list, main_stem_indices, base_points, base_pos, link_parent_indices
 
@@ -322,41 +322,18 @@ if __name__ == "__main__":
     p.createCollisionShape(p.GEOM_PLANE)
     p.createMultiBody(0, 0)
 
-    num_branches_per_stem = 0
-    total_num_vert_stems = 3
+    num_branches_per_stem = 1
+    total_num_vert_stems = 2
     total_num_extensions = 1
     stem_half_length = 0.1
     stem_half_width = 0.1
 
-    base_params, stems_params, main_stem_indices = create_plant_params(num_branches_per_stem, total_num_vert_stems,
+    base_id, joint_list, main_stem_indices, base_points, base_pos, link_parent_indices = create_random_plant(num_branches_per_stem, total_num_vert_stems,
                                                                        total_num_extensions, [0.4, 0.4])
 
 
-    base_mass, col_base_id, vis_base_id, base_pos, base_ori = base_params
-
-    link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, linkOrientations, \
-        linkInertialFramePositions, linkInertialFrameOrientations, indices, jointTypes, axis = stems_params
-
-
-    base_id = p.createMultiBody(
-        base_mass, col_base_id, vis_base_id, base_pos, base_ori,
-        linkMasses=link_Masses, linkCollisionShapeIndices=linkCollisionShapeIndices,
-        linkVisualShapeIndices=linkVisualShapeIndices, linkPositions=linkPositions,
-        linkOrientations=linkOrientations, linkInertialFramePositions=linkInertialFramePositions,
-        linkInertialFrameOrientations=linkInertialFrameOrientations, linkParentIndices=indices,
-        linkJointTypes=jointTypes, linkJointAxis=axis
-    )
-
-    # print("base pos: ", base_pos)
-    # print("base point: ", base_points)
-    # input("")
-
-    for j in range(-1, p.getNumJoints(base_id)):
-        p.changeDynamics(base_id, j, jointLowerLimit=-1.0, jointUpperLimit=1.0, jointDamping=10, linearDamping=1.5)
-
-    joint_list = indices
     p.setJointMotorControlArray(base_id, joint_list, p.VELOCITY_CONTROL, targetVelocities=len(joint_list) * [0],
-                                forces=len(joint_list) * [1e-1])  # make plant responsive to external force
+                               forces=len(joint_list) * [1e-1])  # make plant responsive to external force
 
 
     time_limit = 20
@@ -381,8 +358,8 @@ if __name__ == "__main__":
     while(1):
 
 
-        # if(time.time() - time_elapsed > time_limit):
-        #     break
+        # # if(time.time() - time_elapsed > time_limit):
+        # #     break
 
         kp = 3000
         kd = 50
@@ -409,6 +386,9 @@ if __name__ == "__main__":
 
         base_rep.observe_all()
         print(base_rep.deflections)
+
+        # for j in joint_list:
+        #     print(j, p.getJointState(base_id, j)[3])
 
         p.stepSimulation()
         time.sleep(1/240.0)

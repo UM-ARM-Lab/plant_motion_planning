@@ -90,7 +90,7 @@ def step_sim_v2():
                                          -kp * plant_rot_joint_displacement_y, 0],
                               flags=p.LINK_FRAME)
 
-    for t in range(200):
+    for t in range(10):
         pyb_tools_utils.step_simulation()
 
 
@@ -119,11 +119,11 @@ def generate_tall_plants(num_plants, positions, floor):
 
 envs = {
     "env0": [
-        [0.4, 0.1],
-        [0.05, -0.15],
-        [-0.25, 0.60],
-        [-0.25, 0.45],
-        [-0.05, 0.50]
+        [-0.60, 0.70],
+        [0.60, 0.35],
+        [-0.25, 0.70],
+        [-0.45, 0.70],
+        [-0.05, 0.70]
     ],
     "env1": [
         [0.4, 0.1],

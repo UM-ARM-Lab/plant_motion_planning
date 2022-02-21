@@ -1,17 +1,11 @@
-from setuptools import setup, find_packages
+#!/usr/bin/env python
 
-setup(
-    name='plant-motion-planning',
-    version='',
-    packages=find_packages(),
-    url='',
-    license='',
-    author='aaatresh',
-    author_email='aaatresh@umich.edu',
-    description='',
-    test_suite='pytest',
-    tests_require=[
-        'pytest'
-    ],
-    install_requires=['numpy', 'pybullet', 'scipy', 'Pillow', 'psutil', 'PyYAML']
+from distutils.core import setup
+from catkin_pkg.python_setup import generate_distutils_setup
+
+d = generate_distutils_setup(
+	packages=['hdt_adroit_python'],
+	package_dir={'': 'src'},
 )
+
+setup(**d)
