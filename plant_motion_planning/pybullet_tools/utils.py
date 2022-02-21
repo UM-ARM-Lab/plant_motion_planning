@@ -27,8 +27,6 @@ from itertools import product, combinations, count, cycle, islice
 from multiprocessing import TimeoutError
 from contextlib import contextmanager
 
-from .transformations import quaternion_from_matrix, euler_from_quaternion, quaternion_slerp
-
 directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(directory, '../motion'))
 from plant_motion_planning.motion_planners.motion_planners.rrt_connect import birrt, birrt_with_controls, \

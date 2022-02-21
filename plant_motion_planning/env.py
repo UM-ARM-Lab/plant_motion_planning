@@ -39,20 +39,9 @@ class SinglePlantEnv(Environment):
         floor = pyb_tools_utils.load_model(os.path.join(cfg.ROOT_DIR, 'models/short_floor.urdf'), pose=pose_floor,
                                            fixed_base=True)
 
-        # Load a block that we would like to use as our object of interest
-        block = pyb_tools_utils.load_model(pyb_tools_utils.BLOCK_URDF, fixed_base=True)
-        # Set location and orientation of block in the simulation world
-        pyb_tools_utils.set_pose(block, pyb_tools_utils.Pose(pyb_tools_utils.Point(x=0.4 + base_offset_xy[0],
-                                                                                   y=-0.4 + base_offset_xy[1], z=0.45),
-                                                             pyb_tools_utils.Euler(yaw=1.57)))
-
         # Load robot model given macro to urdf file and fix its base
         pose_robot = pyb_tools_utils.Pose(pyb_tools_utils.Point(x=base_offset_xy[0] + 0.02, y=base_offset_xy[1] - 0.31, z=0.132955), pyb_tools_utils.Euler(yaw=np.pi/2))
         self.robot = pyb_tools_utils.load_model(pyb_tools_utils.HDT_MICHIGAN_URDF, pose=pose_robot, fixed_base = True) # KUKA_IIWA_URDF | DRAKE_IIWA_URDF
-
-        # Let robot fall to ground before loading in plants
-        for t in range(0, 50):
-            pyb_tools_utils.step_simulation()
         
         if(loadPath is None):
 
@@ -72,7 +61,7 @@ class SinglePlantEnv(Environment):
             self.plant_id, self.plant_rep, self.joint_list, self.base_id = load_plant_from_urdf(os.path.join(loadPath, "plant.urdf"),
                                                                                                 os.path.join(loadPath, "plant_params.pkl"), base_offset_xy)
 
-        self.fixed = [floor, block]
+        self.fixed = [floor]
         if(avoid_all):
             self.fixed = self.fixed + [self.plant_id]
 
