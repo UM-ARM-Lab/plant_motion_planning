@@ -310,7 +310,7 @@ def create_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_e
     forces[0] = (0, 0, 0)
     forces[1] = (0, 0, 0)
     # enable plant
-    p.setJointMotorControlMultiDofArray(base_id, joint_list, p.POSITION_CONTROL, targetPositions=len(joint_list) * [(0, 0, 0, 1)], positionGains=len(joint_list) * [1.0], forces=len(joint_list) * [(500, 500, 500)], maxVelocities=0.5)
+    #p.setJointMotorControlMultiDofArray(base_id, joint_list, p.POSITION_CONTROL, targetPositions=len(joint_list) * [(0, 0, 0, 1)], positionGains=len(joint_list) * [1.0], forces=len(joint_list) * [(500, 500, 500)], maxVelocities=0.5)
     #p.setJointMotorControlMultiDofArray(base_id, joint_list, p.VELOCITY_CONTROL, targetVelocities=len(joint_list) * [], velocityGains=len(joint_list) * [1.0], forces=len(joint_list) * [(1000, 1000, 1000)])
 
     # for l in range(-1, p.getNumJoints(base_id)):
@@ -385,29 +385,29 @@ if __name__ == "__main__":
         kd = 100
 
 
-        # # External torque added by considering joint indices in the opposite direction
-        # for i, joint_idx in enumerate(range(len(joint_list)-1,0, -2)):
+        # External torque added by considering joint indices in the opposite direction
+        for i, joint_idx in enumerate(range(len(joint_list)-1,0, -2)):
 
-        #     plant_rot_joint_displacement_y, _, plant_hinge_x_reac, _ = p.getJointState(base_id, joint_idx)
-        #     plant_rot_joint_displacement_x, _, plant_hinge_y_reac, _ = p.getJointState(base_id, joint_idx - 1)
+            plant_rot_joint_displacement_y, _, plant_hinge_x_reac, _ = p.getJointState(base_id, joint_idx)
+            plant_rot_joint_displacement_x, _, plant_hinge_y_reac, _ = p.getJointState(base_id, joint_idx - 1)
 
-        #     diffy = plant_rot_joint_displacement_y - prev_plant_rot_joint_displacement_y[i]
-        #     diffx = plant_rot_joint_displacement_x - prev_plant_rot_joint_displacement_x[i]
+            diffy = plant_rot_joint_displacement_y - prev_plant_rot_joint_displacement_y[i]
+            diffx = plant_rot_joint_displacement_x - prev_plant_rot_joint_displacement_x[i]
 
-        #     prev_plant_rot_joint_displacement_y[i], prev_plant_rot_joint_displacement_x[i] = plant_rot_joint_displacement_y, \
-        #                                                                                      plant_rot_joint_displacement_x
+            prev_plant_rot_joint_displacement_y[i], prev_plant_rot_joint_displacement_x[i] = plant_rot_joint_displacement_y, \
+                                                                                             plant_rot_joint_displacement_x
 
-        #     p.applyExternalTorque(base_id, linkIndex=joint_idx,
-        #                           torqueObj=[-kp * plant_rot_joint_displacement_x + kd * diffx,
-        #                                      -kp * plant_rot_joint_displacement_y + kd * diffy, 0],
-        #                           flags=p.LINK_FRAME)
+            p.applyExternalTorque(base_id, linkIndex=joint_idx,
+                                  torqueObj=[-kp * plant_rot_joint_displacement_x + kd * diffx,
+                                             -kp * plant_rot_joint_displacement_y + kd * diffy, 0],
+                                  flags=p.LINK_FRAME)
 
-        #     kp = kp - 100
+            kp = kp - 100
 
-        # base_rep.observe_all()
-        # print(base_rep.deflections)
-        for j in range(p.getNumJoints(base_id)):
-            print(j, p.getJointStateMultiDof(base_id, j)[3])
+        base_rep.observe_all()
+        print(base_rep.deflections)
+        # for j in range(p.getNumJoints(base_id)):
+        #     print(j, p.getJointStateMultiDof(base_id, j)[3])
 
         p.stepSimulation()
         time.sleep(1/240.0)
