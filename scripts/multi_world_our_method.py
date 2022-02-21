@@ -44,7 +44,7 @@ args = parser.parse_args()
 # Initial configuration of the Arm
 init_conf = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 # Final configuration of the Arm
-goal_conf = (-2.3, 2.82, 1.48, -0.27, -5.18, -0.55, 4.23, -0.08, 0.70)
+goal_conf = (0.0, -0.1, 0.0, -0.7, 0.0, 0.0, 0.0, 0.0, 0.0)
 
 
 def main():
@@ -74,7 +74,7 @@ def main():
     np.random.seed(1)
     random.seed(1)
     # Base position in X and Y
-    plant_pos_xy_limits = ((0, 0.35), (0.15, 0.50))
+    plant_pos_xy_limits = ((0, 0), (0.35, 0.35))
 
 
     # Env2
@@ -104,7 +104,6 @@ def main():
     # Generate random plant for each world
     multi_world_env = MultiPlantWorld(base_offset_xs, base_offset_ys, deflection_limit, num_branches_per_stem, total_num_vert_stems,
                                       total_num_extensions, plant_pos_xy_limits, physicsClientId=cli)
-
     # Reinitialize random generator
     # np.random.seed()
     # random.seed()

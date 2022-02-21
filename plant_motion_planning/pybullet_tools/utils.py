@@ -4374,7 +4374,7 @@ def check_initial_end_multi_world(robot, start_conf, end_conf, collision_fn, mul
     #     t = t + 1
     #     # s_utils.step_sim_v2()
     multi_world_env.step(end_conf, True)
-
+    
     if collision_fn(end_conf):
         print('Error! End configuration is in collision')
         exit()

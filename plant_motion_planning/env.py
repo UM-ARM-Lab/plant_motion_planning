@@ -154,7 +154,7 @@ class SinglePlantEnv(Environment):
         p.setJointMotorControlArray(self.robot, self.joints, p.POSITION_CONTROL, action, positionGains=len(self.joints) * [0.01])
 
         # stepping through simulation
-        for t in range(200):
+        for t in range(50):
             # Restore plant joints after deflection
             self._restore_plant_joints()
 
@@ -204,7 +204,7 @@ class MultiPlantWorld(Environment):
         self.deflection_limit = self.envs[(xs[0], ys[0])].deflection_limit
 
     def step_no_action(self):
-        for t in range(200):
+        for t in range(50):
             for xy, env in self.envs.items():
                 env._restore_plant_joints()
             pyb_tools_utils.step_simulation()
@@ -213,7 +213,7 @@ class MultiPlantWorld(Environment):
         for xy, env in self.envs.items():
             env.step_after_restoring(action, set_joint_pos=set_joint_pos)
 
-        for t in range(200):
+        for t in range(50):
             for xy, env in self.envs.items():
                 env._restore_plant_joints()
             pyb_tools_utils.step_simulation()
