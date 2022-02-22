@@ -27,7 +27,7 @@ def img_to_sig(arr):
 
 if __name__ == "__main__":
 
-    p.connect(p.GUI)#, options='--background_color_red=1.0 --background_color_green=0.0 --background_color_blue=0.0')
+    p.connect(p.DIRECT)#, options='--background_color_red=1.0 --background_color_green=0.0 --background_color_blue=0.0')
     p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1)
 
     p.createCollisionShape(p.GEOM_PLANE)
@@ -107,11 +107,12 @@ if __name__ == "__main__":
         compare_img = seg
         depth_sig = img_to_sig(compare_depth*10)
         compare_sig = img_to_sig(seg)
+        sig_depth = img_to_sig(depth)
 
         print(np.sum(seg-seg))
         print("max", np.max(seg))
         cv2.imshow('base',compare_img)
-    
+        cv2.waitKey(0)
         p.removeBody(base_id)
 
         closest_ssim = 0.0
@@ -121,9 +122,9 @@ if __name__ == "__main__":
         
         best_params = [base_params, stems_params, main_stem_indices]
 
-        for i in range (1,100):
-            x = np.random.uniform(low=-0.2, high=0.2)
-            y = np.random.uniform(low=-0.2, high=0.2)
+        for i in range (1,500):
+            x =  np.random.uniform(low=-0.2, high=0.2)
+            y =  np.random.uniform(low=-0.2, high=0.2)
             base_params, stems_params, main_stem_indices = create_plant_params(num_branches_per_stem, total_num_vert_stems,
                                                                             total_num_extensions, [x, y])
 
@@ -152,13 +153,16 @@ if __name__ == "__main__":
 
             seg[seg < 0] = 0.0
             new_sig = img_to_sig(seg)
+            new_depth_sig = img_to_sig(depth)
+
             dist, _, flow = cv2.EMD(compare_sig, new_sig, cv2.DIST_L2)
+            dist2, _, flow = cv2.EMD(sig_depth, new_depth_sig, cv2.DIST_L2)
 
             if dist < smallest_emd:
                 smallest_emd = dist
                 best_params = [base_params, stems_params, main_stem_indices]
                 print("EMD", dist)
-                if (dist < 0.8):
+                if (dist < 0.2):
                     p.removeBody(base_id)
                     break
 
@@ -211,7 +215,7 @@ if __name__ == "__main__":
         
 
         cv2.imshow('new',seg)
-        #cv2.waitKey(0) 
+        cv2.waitKey(0)
         p.removeBody(base_id)
     print(base_proximity)
     print(link1_ori_dist)
