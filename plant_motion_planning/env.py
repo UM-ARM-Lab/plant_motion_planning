@@ -40,8 +40,8 @@ class SinglePlantEnv(Environment):
                                            fixed_base=True)
 
         # Load robot model given macro to urdf file and fix its base
-        pose_robot = pyb_tools_utils.Pose(pyb_tools_utils.Point(x=base_offset_xy[0] + 0.02, y=base_offset_xy[1] - 0.31, z=0.132955), pyb_tools_utils.Euler(yaw=np.pi/2))
-        self.robot = pyb_tools_utils.load_model(pyb_tools_utils.HDT_MICHIGAN_URDF, pose=pose_robot, fixed_base = True) # KUKA_IIWA_URDF | DRAKE_IIWA_URDF
+        #pose_robot = pyb_tools_utils.Pose(pyb_tools_utils.Point(x=base_offset_xy[0] + 0.02, y=base_offset_xy[1] - 0.31, z=0.132955), pyb_tools_utils.Euler(yaw=np.pi/2))
+        #self.robot = pyb_tools_utils.load_model(pyb_tools_utils.HDT_MICHIGAN_URDF, pose=pose_robot, fixed_base = True) # KUKA_IIWA_URDF | DRAKE_IIWA_URDF
         
         if(loadPath is None):
 
@@ -60,7 +60,7 @@ class SinglePlantEnv(Environment):
         else:
             self.plant_id, self.plant_rep, self.joint_list, self.base_id = load_plant_from_urdf(os.path.join(loadPath, "plant.urdf"),
                                                                                                 os.path.join(loadPath, "plant_params.pkl"), base_offset_xy)
-
+        input()
         self.fixed = [floor]
         if(avoid_all):
             self.fixed = self.fixed + [self.plant_id]
