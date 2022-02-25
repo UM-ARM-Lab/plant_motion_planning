@@ -105,9 +105,9 @@ if __name__ == "__main__":
         seg = seg.astype(np.float32)
         seg[seg < 0] = 0
         compare_img = seg
-        depth_sig = img_to_sig(compare_depth*10)
-        compare_sig = img_to_sig(seg)
-        sig_depth = img_to_sig(depth)
+        # depth_sig = img_to_sig(compare_depth*10)
+        # compare_sig = img_to_sig(seg)
+        # sig_depth = img_to_sig(depth)
 
         print(np.sum(seg-seg))
         print("max", np.max(seg))
@@ -115,10 +115,7 @@ if __name__ == "__main__":
         cv2.waitKey(0)
         p.removeBody(base_id)
 
-        closest_ssim = 0.0
-        smallest_diff = np.infty
-        closest_id = base_id
-        smallest_emd = np.infty
+        most_overlap = 0
         
         best_params = [base_params, stems_params, main_stem_indices]
 
@@ -152,17 +149,23 @@ if __name__ == "__main__":
             [img,depth,seg] = cam.get_image()
 
             seg[seg < 0] = 0.0
-            new_sig = img_to_sig(seg)
-            new_depth_sig = img_to_sig(depth)
 
-            dist, _, flow = cv2.EMD(compare_sig, new_sig, cv2.DIST_L2)
-            dist2, _, flow = cv2.EMD(sig_depth, new_depth_sig, cv2.DIST_L2)
+            overlap = compare_img+seg
+            overlap[overlap < 2] = 0
+            pixel_count = np.sum(overlap)/2.0
 
-            if dist < smallest_emd:
-                smallest_emd = dist
+
+            # new_sig = img_to_sig(seg)
+            # new_depth_sig = img_to_sig(depth)
+            #
+            # dist, _, flow = cv2.EMD(compare_sig, new_sig, cv2.DIST_L2)
+            # dist2, _, flow = cv2.EMD(sig_depth, new_depth_sig, cv2.DIST_L2)
+
+            if pixel_count > most_overlap:
+                most_overlap = pixel_count
                 best_params = [base_params, stems_params, main_stem_indices]
-                print("EMD", dist)
-                if (dist < 0.2):
+                print("pixel_count", pixel_count)
+                if pixel_count > 300:
                     p.removeBody(base_id)
                     break
 

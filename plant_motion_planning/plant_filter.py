@@ -15,7 +15,8 @@ class PlantPF:
 
     def select_action(self):
         # figure out what the most uncertain plant is somehow and move that plant using an action of
-        # the robots arms in the vicinity of that plant
+        # the robots arms in the vicinity of that plant. prior to actually using the arm, I just move a
+        # horizontal rod across the plant.
 
         pass
 
