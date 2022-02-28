@@ -17,6 +17,17 @@ MAX_ACCLERATION = np.array([linear_params['max_acceleration'], angular_params['m
 TIME_STEP = 1./240.
 STATE_DIM = 5
 
+MIN_X = -5
+MIN_Y = -5
+MIN_YAW = 0
+
+MAX_X = 5
+MAX_Y = 5
+MAX_YAW = 2 * np.pi
+
+MIN_LIMITS = np.array([MIN_X, MIN_Y, MIN_YAW, -MAX_VELOCITY[0], -MAX_VELOCITY[1]]).T
+MAX_LIMITS = np.array([MAX_X, MAX_Y, MAX_YAW, MAX_VELOCITY[0], MAX_VELOCITY[0]]).T
+
 # Dynamics model for husky
 # x = [xpos, ypos, yaw, v, w]^T
 # u = [u1, u2] where u1, u2 [-1, 1] representing -1 as max deaccleration and 1 as max acceleration
@@ -74,8 +85,11 @@ def gen_prims(num_quarter_prims, draw_prims):
         prim3 = list()
         prim4 = list()
 
+        counter = 0
+
         # Keep applying same control input untill primitive is generated
         while x[0] < endX and x[2] < endTheta:
+            counter += 1
             x = dynamics(x, u)
 
             # Make sure to capture all possible controls
@@ -84,7 +98,7 @@ def gen_prims(num_quarter_prims, draw_prims):
             prim3.append(np.multiply(u, mult3))
             prim4.append(np.multiply(u, mult4))
 
-            if draw_prims:
+            if draw_prims and not (counter % 50):
                 draw_path_line(prev_x, x, (0, 0, 1))
                 prev_x = x
         
@@ -140,6 +154,30 @@ def gen_prims(num_quarter_prims, draw_prims):
     prims.append(prim2)
 
     return prims
+
+def get_collision_fn():
+    # TODO write actual collision fn
+    return False
+
+def get_sample_fn():
+    def sample_fn():
+        return np.random.uniform(MIN_LIMITS, MAX_LIMITS)
+    return sample_fn
+
+def get_cost_fn():
+    def cost_fn(x0, x1):
+        cost = 0
+        for i in range(STATE_DIM):
+            diff = x0[i] - x1[i]
+
+            # Yaw wraps around so treat it differently
+            if i == 2:
+                diff = min(abs(diff), 2*np.pi - abs(diff))
+            
+            # Weight cost based on limits
+            cost += (diff / (MAX_LIMITS[i] - MIN_LIMITS[i])) ** 2
+        return cost
+    return cost_fn
 
 def draw_path_line(x1, x2, color, width = 1.0):
     draw_line((x1[0], x1[1], 0.01), (x2[0], x2[1], 0.01), width, color)
