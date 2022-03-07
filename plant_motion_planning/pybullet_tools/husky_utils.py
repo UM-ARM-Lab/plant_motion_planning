@@ -28,38 +28,44 @@ MAX_YAW = 2 * np.pi
 MIN_LIMITS = np.array([MIN_X, MIN_Y, MIN_YAW, -MAX_VELOCITY[0], -MAX_VELOCITY[1]]).T
 MAX_LIMITS = np.array([MAX_X, MAX_Y, MAX_YAW, MAX_VELOCITY[0], MAX_VELOCITY[0]]).T
 
-# Dynamics model for husky
-# x = [xpos, ypos, yaw, v, w]^T
-# u = [u1, u2] where u1, u2 [-1, 1] representing -1 as max deaccleration and 1 as max acceleration
-def dynamics(x, u):
-    # u has to be in range
-    if np.max(u) > 1 or np.min(u) < -1:
-        return None
-    
-    accel = np.multiply(u, MAX_ACCLERATION) * TIME_STEP
-    new_vel = x[3:5] + accel
-    new_vel[0] = np.clip(new_vel[0], -MAX_VELOCITY[0], MAX_VELOCITY[1])
-    new_vel[1] = np.clip(new_vel[1], -MAX_VELOCITY[1], MAX_VELOCITY[1])
+def get_dynamics_fn():
+    # Dynamics model for husky
+    # x = [xpos, ypos, yaw, v, w]^T
+    # u = [u1, u2] where u1, u2 [-1, 1] representing -1 as max deaccleration and 1 as max acceleration
+    def dynamics_fn(x, u):
+        # u has to be in range
+        if np.max(u) > 1 or np.min(u) < -1:
+            return None
+        
+        accel = np.multiply(u, MAX_ACCLERATION) * TIME_STEP
+        new_vel = x[3:5] + accel
+        new_vel[0] = np.clip(new_vel[0], -MAX_VELOCITY[0], MAX_VELOCITY[1])
+        new_vel[1] = np.clip(new_vel[1], -MAX_VELOCITY[1], MAX_VELOCITY[1])
 
-    delta_distance = new_vel[0] * TIME_STEP
-    delta_pose = np.array([delta_distance * np.cos(x[2]), delta_distance * np.sin(x[2]), new_vel[1] * TIME_STEP])
-    new_pose = x[0:3] + delta_pose
+        delta_distance = new_vel[0] * TIME_STEP
+        delta_pose = np.array([delta_distance * np.cos(x[2]), delta_distance * np.sin(x[2]), new_vel[1] * TIME_STEP])
+        new_pose = x[0:3] + delta_pose
 
-    xnew = np.hstack((new_pose, new_vel))
-    return xnew
+        xnew = np.hstack((new_pose, new_vel))
+        return xnew
+    return dynamics_fn
 
-def execute_path(path, robot):
-    for x in path:
-        # linear_velocity = [x[3] * np.sin(x[2]), x[3] * np.cos(x[2]), 0]
-        # angular_velocity = x[4]
-        position = (x[0], x[1], 0.31769884443141244)
-        rotation = p.getQuaternionFromEuler((0, 0, x[2]))
-        #p.resetBaseVelocity(robot, linearVelocity=linear_velocity, angularVelocity=angular_velocity)
-        p.resetBasePositionAndOrientation(robot, position, rotation)
-        step_simulation()
-        wait_for_duration(1./240.)
+def execute_path(robot, start, path, dynamics_fn, draw_path = False):
+    x = start
+    if draw_path:
+        prev_x = x
+        count = 0
+    for z in path:
+        for u in z:
+            x = dynamics_fn(x, u)
+            set_pose(robot, x)
+            if draw_path and not count % 5:
+                draw_path_line(prev_x, x)
+                prev_x = x
 
-def gen_prims(num_quarter_prims, draw_prims):
+            #wait_for_duration(1./240.)
+
+def gen_prims(num_quarter_prims, dynamics_fn, draw_prims=False):
     # End conditions for generating primitives
     endX = 1.5
     endTheta = np.pi/2
@@ -90,7 +96,7 @@ def gen_prims(num_quarter_prims, draw_prims):
         # Keep applying same control input untill primitive is generated
         while x[0] < endX and x[2] < endTheta:
             counter += 1
-            x = dynamics(x, u)
+            x = dynamics_fn(x, u)
 
             # Make sure to capture all possible controls
             prim1.append(np.multiply(u, mult1))
@@ -126,7 +132,7 @@ def gen_prims(num_quarter_prims, draw_prims):
     prim2 = list()
 
     while x[0] < endX:
-        x = dynamics(x, u)
+        x = dynamics_fn(x, u)
 
         prim1.append(np.multiply(u, mult1))
         prim2.append(np.multiply(u, mult3))
@@ -146,7 +152,7 @@ def gen_prims(num_quarter_prims, draw_prims):
     prim2 = list()
 
     while x[2] < endTheta:
-        x = dynamics(x, u)
+        x = dynamics_fn(x, u)
         prim1.append(np.multiply(u, mult1))
         prim2.append(np.multiply(u, mult2))
         
@@ -156,8 +162,10 @@ def gen_prims(num_quarter_prims, draw_prims):
     return prims
 
 def get_collision_fn():
-    # TODO write actual collision fn
-    return False
+    # TODO write actual collision 
+    def collision_fn(x):
+        return False
+    return collision_fn
 
 def get_sample_fn():
     def sample_fn():
@@ -179,12 +187,14 @@ def get_cost_fn():
         return cost
     return cost_fn
 
-def draw_path_line(x1, x2, color, width = 1.0):
+def draw_path_line(x1, x2, color=(0, 0, 1), width = 1.0):
     draw_line((x1[0], x1[1], 0.01), (x2[0], x2[1], 0.01), width, color)
-    draw_line((x1[0], -x1[1], 0.01), (x2[0], -x2[1], 0.01), width, color)
-    draw_line((-x1[0], x1[1], 0.01), (-x2[0], x2[1], 0.01), width, color)
-    draw_line((-x1[0], -x1[1], 0.01), (-x2[0], -x2[1], 0.01), width, color)
 
-def draw_line(start, end, width, color):
+def draw_line(start, end, width, color=(0, 0, 1)):
     line_id = p.addUserDebugLine(start, end, color, width)
     return line_id
+
+def set_pose(robot, x):
+    position = (x[0], x[1], 0.31769884443141244)
+    rotation = p.getQuaternionFromEuler((0, 0, x[2]))
+    p.resetBasePositionAndOrientation(robot, position, rotation)
