@@ -62,24 +62,74 @@ if __name__ == "__main__":
     link2_ori_dist = []
     
 
-    for j in range(100):
 
-        print("Generating plant"+str(j))
-        base_points = {}
-        main_stem_indices = []
-        link_parent_indices = {}
 
+    base_points = {}
+    main_stem_indices = []
+    link_parent_indices = {}
+
+    base_params, stems_params, main_stem_indices = create_plant_params(num_branches_per_stem, total_num_vert_stems,
+                                                                    total_num_extensions, [0.0, 0.0])
+
+
+
+    base_mass, col_base_id, vis_base_id, base_pos, base_ori = base_params
+    link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, linkOrientations, \
+        linkInertialFramePositions, linkInertialFrameOrientations, indices, jointTypes, axis = stems_params
+
+
+
+
+    base_id = p.createMultiBody(
+        base_mass, col_base_id, vis_base_id, base_pos, base_ori,
+        linkMasses=link_Masses, linkCollisionShapeIndices=linkCollisionShapeIndices,
+        linkVisualShapeIndices=linkVisualShapeIndices, linkPositions=linkPositions,
+        linkOrientations=linkOrientations, linkInertialFramePositions=linkInertialFramePositions,
+        linkInertialFrameOrientations=linkInertialFrameOrientations, linkParentIndices=indices,
+        linkJointTypes=jointTypes, linkJointAxis=axis
+    )
+
+
+    print("base base pose", base_pos)
+
+    saved_base_pos = np.array(base_pos)
+    print("base link2 ori", linkOrientations[2])
+    saved_link2_ori = np.array(linkOrientations[2])
+    print("base base ori", base_ori)
+    saved_base_ori = np.array(base_ori)
+
+    [img,depth,seg] = cam.get_image()
+
+    compare_depth = depth
+    seg = seg.astype(np.float32)
+    seg[seg < 0] = 0
+    compare_img = seg
+    # depth_sig = img_to_sig(compare_depth*10)
+    # compare_sig = img_to_sig(seg)
+    # sig_depth = img_to_sig(depth)
+
+    print(np.sum(seg-seg))
+    print("max", np.max(seg))
+    cv2.imshow('base',compare_img)
+    cv2.waitKey(0)
+    p.removeBody(base_id)
+
+    most_overlap = 0
+
+    best_params = [base_params, stems_params, main_stem_indices]
+
+    all_params = []
+    all_images = np.zeros((1000,64,64))
+
+
+    for i in range (0,1000):
+        x =  np.random.uniform(low=-0.2, high=0.2)
+        y =  np.random.uniform(low=-0.2, high=0.2)
         base_params, stems_params, main_stem_indices = create_plant_params(num_branches_per_stem, total_num_vert_stems,
-                                                                        total_num_extensions, [0.0, 0.0])
-
-
-
+                                                                        total_num_extensions, [x, y])
         base_mass, col_base_id, vis_base_id, base_pos, base_ori = base_params
         link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, linkOrientations, \
             linkInertialFramePositions, linkInertialFrameOrientations, indices, jointTypes, axis = stems_params
-
-
-
 
         base_id = p.createMultiBody(
             base_mass, col_base_id, vis_base_id, base_pos, base_ori,
@@ -90,136 +140,60 @@ if __name__ == "__main__":
             linkJointTypes=jointTypes, linkJointAxis=axis
         )
 
+        time.sleep(1/60.0)
+        p.stepSimulation()
 
-        print("base base pose", base_pos)
-
-        saved_base_pos = np.array(base_pos)
-        print("base link2 ori", linkOrientations[2])
-        saved_link2_ori = np.array(linkOrientations[2])
-        print("base base ori", base_ori)
-        saved_base_ori = np.array(base_ori)
-
-        [img,depth,seg] = cam.get_image()  
-        
-        compare_depth = depth
-        seg = seg.astype(np.float32)
+        [img,depth,seg] = cam.get_image()
         seg[seg < 0] = 0
-        compare_img = seg
-        # depth_sig = img_to_sig(compare_depth*10)
-        # compare_sig = img_to_sig(seg)
-        # sig_depth = img_to_sig(depth)
-
-        print(np.sum(seg-seg))
-        print("max", np.max(seg))
-        cv2.imshow('base',compare_img)
-        cv2.waitKey(0)
+        all_images[i] = seg
+        all_params.append([base_params, stems_params, main_stem_indices])
         p.removeBody(base_id)
 
-        most_overlap = 0
-        
-        best_params = [base_params, stems_params, main_stem_indices]
 
-        for i in range (1,500):
-            x =  np.random.uniform(low=-0.2, high=0.2)
-            y =  np.random.uniform(low=-0.2, high=0.2)
-            base_params, stems_params, main_stem_indices = create_plant_params(num_branches_per_stem, total_num_vert_stems,
-                                                                            total_num_extensions, [x, y])
+    all_overlap = all_images + compare_img
+    all_overlap[all_overlap<2] = 0
+    sums = np.sum(np.sum(all_overlap, axis=1),axis=1)/2
 
+    print("sums",sums)
+    n_best = 10
+    idx = (-sums).argsort()[:n_best]
 
+    print(idx)
 
-            base_mass, col_base_id, vis_base_id, base_pos, base_ori = base_params
-            link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, linkOrientations, \
-                linkInertialFramePositions, linkInertialFrameOrientations, indices, jointTypes, axis = stems_params
+    print("best sums", sums.take(idx))
 
+    test_img = all_images[idx[0]].astype(np.float32)
 
+    cv2.imshow('new', test_img)
+    cv2.waitKey(0)
 
+    base_params, stems_params, main_stem_indices = best_params
 
-            base_id = p.createMultiBody(
-                base_mass, col_base_id, vis_base_id, base_pos, base_ori,
-                linkMasses=link_Masses, linkCollisionShapeIndices=linkCollisionShapeIndices,
-                linkVisualShapeIndices=linkVisualShapeIndices, linkPositions=linkPositions,
-                linkOrientations=linkOrientations, linkInertialFramePositions=linkInertialFramePositions,
-                linkInertialFrameOrientations=linkInertialFrameOrientations, linkParentIndices=indices,
-                linkJointTypes=jointTypes, linkJointAxis=axis
-            )
+    base_mass, col_base_id, vis_base_id, base_pos, base_ori = base_params
+    link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, linkOrientations, \
+        linkInertialFramePositions, linkInertialFrameOrientations, indices, jointTypes, axis = stems_params
 
-            time.sleep(1/60.0)
-            p.stepSimulation()
-            
-            [img,depth,seg] = cam.get_image()
+    print("base pose",base_pos)
+    print("base ori", base_ori)
+    print("link2 ori", linkOrientations[2])
 
-            seg[seg < 0] = 0.0
+    basepos = np.array(base_pos)
+    baseori = np.array(base_ori)
+    link2ori = np.array(linkOrientations[2])
 
-            overlap = compare_img+seg
-            overlap[overlap < 2] = 0
-            pixel_count = np.sum(overlap)/2.0
+    print("base distance", np.linalg.norm(basepos-saved_base_pos,2))
 
+    print("orientation distance 1", 1-np.abs(np.dot(baseori, saved_base_ori)))
+    print("orientation distance 2", 1-np.abs(np.dot(link2ori, saved_link2_ori)))
 
-            # new_sig = img_to_sig(seg)
-            # new_depth_sig = img_to_sig(depth)
-            #
-            # dist, _, flow = cv2.EMD(compare_sig, new_sig, cv2.DIST_L2)
-            # dist2, _, flow = cv2.EMD(sig_depth, new_depth_sig, cv2.DIST_L2)
-
-            if pixel_count > most_overlap:
-                most_overlap = pixel_count
-                best_params = [base_params, stems_params, main_stem_indices]
-                print("pixel_count", pixel_count)
-                if pixel_count > 300:
-                    p.removeBody(base_id)
-                    break
-
-            p.removeBody(base_id)
-        
-
-        base_params, stems_params, main_stem_indices = best_params
-
-        base_mass, col_base_id, vis_base_id, base_pos, base_ori = base_params
-        link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, linkOrientations, \
-            linkInertialFramePositions, linkInertialFrameOrientations, indices, jointTypes, axis = stems_params
-
-        print("base pose",base_pos)
-        print("base ori", base_ori)
-        print("link2 ori", linkOrientations[2])
-
-        basepos = np.array(base_pos)
-        baseori = np.array(base_ori)
-        link2ori = np.array(linkOrientations[2])
-
-        print("base distance", np.linalg.norm(basepos-saved_base_pos,2))
-
-        print("orientation distance 1", 1-np.abs(np.dot(baseori, saved_base_ori)))
-        print("orientation distance 2", 1-np.abs(np.dot(link2ori, saved_link2_ori)))
-
-        base_proximity.append(np.linalg.norm(basepos-saved_base_pos,2))
-        link1_ori_dist.append(1-np.abs(np.dot(baseori, saved_base_ori)))
-        link2_ori_dist.append(1-np.abs(np.dot(link2ori, saved_link2_ori)))
+    base_proximity.append(np.linalg.norm(basepos-saved_base_pos,2))
+    link1_ori_dist.append(1-np.abs(np.dot(baseori, saved_base_ori)))
+    link2_ori_dist.append(1-np.abs(np.dot(link2ori, saved_link2_ori)))
 
 
-        base_id = p.createMultiBody(
-            base_mass, col_base_id, vis_base_id, base_pos, base_ori,
-            linkMasses=link_Masses, linkCollisionShapeIndices=linkCollisionShapeIndices,
-            linkVisualShapeIndices=linkVisualShapeIndices, linkPositions=linkPositions,
-            linkOrientations=linkOrientations, linkInertialFramePositions=linkInertialFramePositions,
-            linkInertialFrameOrientations=linkInertialFrameOrientations, linkParentIndices=indices,
-            linkJointTypes=jointTypes, linkJointAxis=axis
-        )
+    p.removeBody(base_id)
 
 
-
-            
-
-        [img,depth,seg] = cam.get_image()  
-
-
-    
-
-        seg = seg.astype(np.float32)
-        
-
-        cv2.imshow('new',seg)
-        cv2.waitKey(0)
-        p.removeBody(base_id)
     print(base_proximity)
     print(link1_ori_dist)
     print(link2_ori_dist)

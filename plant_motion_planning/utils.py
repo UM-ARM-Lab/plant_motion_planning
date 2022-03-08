@@ -253,6 +253,45 @@ def generate_plants(num_plants, positions, floor):
     return plants_ids, plant_representations
 
 
+def restore_plant(base_params, stems_params, main_stem_indices, base_points, link_parent_indices, x, y):
+    global joint_list, base_id
+
+
+    base_mass, col_base_id, vis_base_id, base_pos, base_ori = base_params
+
+    link_Masses, linkCollisionShapeIndices, linkVisualShapeIndices, linkPositions, linkOrientations, \
+    linkInertialFramePositions, linkInertialFrameOrientations, indices, jointTypes, axis = stems_params
+
+
+    base_pos = [base_pos[0]+x, base_pos[1]-8+y, base_pos[2]]
+    #TODO this only works for two link plants! breaks otherwise.
+    a = base_points[1]
+    b = base_points[3]
+    base_points[1] = [a[0] + x, a[1] - 8 + y, a[2]]
+    base_points[3] = [b[0] + x, b[1] - 8 + y, b[2]]
+
+    base_id = p.createMultiBody(
+        base_mass, col_base_id, vis_base_id, base_pos, base_ori,
+        linkMasses=link_Masses, linkCollisionShapeIndices=linkCollisionShapeIndices,
+        linkVisualShapeIndices=linkVisualShapeIndices, linkPositions=linkPositions,
+        linkOrientations=linkOrientations, linkInertialFramePositions=linkInertialFramePositions,
+        linkInertialFrameOrientations=linkInertialFrameOrientations, linkParentIndices=indices,
+        linkJointTypes=jointTypes, linkJointAxis=axis
+    )
+    for j in range(-1, p.getNumJoints(base_id)):
+        p.changeDynamics(base_id, j, jointLowerLimit=-1.5, jointUpperLimit=1.5, jointDamping=10, linearDamping=1.5)
+
+    joint_list = indices
+
+    p.setJointMotorControlArray(base_id, joint_list, p.VELOCITY_CONTROL, targetVelocities=len(joint_list) * [0],
+                                forces=len(joint_list) * [1e-1])  # make plant responsive to external force
+    base_rep = CharacterizePlant2(base_id, base_points, main_stem_indices, link_parent_indices)
+
+    # print("base points", base_points)
+    # print("base pos", base_pos)
+
+    return base_id, base_rep, joint_list, base_id
+
 def generate_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_extensions, base_pos_xy, stem_half_length=0.1,
                         stem_half_width=0.1, physicsClientId=None, save_plant=False):
 

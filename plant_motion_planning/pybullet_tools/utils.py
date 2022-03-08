@@ -76,8 +76,8 @@ ROOMBA_URDF = 'models/turtlebot/roomba.urdf'
 TURTLEBOT_URDF = 'models/turtlebot/turtlebot_holonomic.urdf'
 DRAKE_IIWA_URDF = 'models/drake/iiwa_description/urdf/iiwa14_polytope_collision.urdf'
 DRAKE_IIWA_URDF_EDIT = 'models/drake/iiwa_description/urdf/iiwa14_polytope_collision_edit.urdf'
-HDT_MICHIGAN_URDF = r.get_path('husky_custom_description') + '/urdf/val_pybullet_description.urdf'
-HDT_MICHIGAN_SRDF = r.get_path('hdt_michigan_moveit') + '/config/hdt_michigan_with_husky.srdf'
+#HDT_MICHIGAN_URDF = r.get_path('husky_custom_description') + '/urdf/val_pybullet_description.urdf'
+#HDT_MICHIGAN_SRDF = r.get_path('hdt_michigan_moveit') + '/config/hdt_michigan_with_husky.srdf'
 
 WSG_50_URDF = 'models/drake/wsg_50_description/urdf/wsg_50_mesh_visual.urdf' # wsg_50 | wsg_50_mesh_visual | wsg_50_mesh_collision
 #SCHUNK_URDF = 'models/drake/wsg_50_description/sdf/schunk_wsg_50.sdf'

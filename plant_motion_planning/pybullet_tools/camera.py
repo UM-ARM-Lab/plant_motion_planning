@@ -35,7 +35,7 @@ class Camera:
 #####################################
 class PyBulletCamera(Camera):
 
-    def __init__(self, camera_eye, camera_look, image_dim=(80, 50), camera_up=[0, 0, 1]):
+    def __init__(self, camera_eye, camera_look, image_dim=(32, 32), camera_up=[0, 0, 1]):
         super().__init__(camera_eye, camera_look, image_dim)
 
         # This is a column major order of the projection
