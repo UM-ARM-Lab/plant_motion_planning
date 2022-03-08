@@ -1,7 +1,9 @@
 import numpy as np
 import pybullet as p
 import rospkg
+import torch
 import yaml
+from arm_pytorch_utilities.math_utils import angular_diff_batch
 
 from plant_motion_planning.pybullet_tools.utils import step_simulation, wait_for_duration
 
@@ -12,10 +14,11 @@ with open(r.get_path('husky_control') + '/config/control.yaml') as stream:
 linear_params = parsed_yaml['husky_velocity_controller']['linear']['x']
 angular_params = parsed_yaml['husky_velocity_controller']['angular']['z']
 
-MAX_VELOCITY = np.array([linear_params['max_velocity'], angular_params['max_velocity']]).T
-MAX_ACCLERATION = np.array([linear_params['max_acceleration'], angular_params['max_acceleration']]).T
-TIME_STEP = 1./240.
+MAX_VELOCITY = torch.tensor([linear_params['max_velocity'], angular_params['max_velocity']])
+MAX_ACCLERATION = torch.diag(torch.tensor([linear_params['max_acceleration'], angular_params['max_acceleration']]))
+TIME_STEP = 1./240. * 50
 STATE_DIM = 5
+CONTROL_DIM = 2
 
 MIN_X = -5
 MIN_Y = -5
@@ -25,8 +28,8 @@ MAX_X = 5
 MAX_Y = 5
 MAX_YAW = 2 * np.pi
 
-MIN_LIMITS = np.array([MIN_X, MIN_Y, MIN_YAW, -MAX_VELOCITY[0], -MAX_VELOCITY[1]]).T
-MAX_LIMITS = np.array([MAX_X, MAX_Y, MAX_YAW, MAX_VELOCITY[0], MAX_VELOCITY[0]]).T
+MIN_LIMITS = torch.tensor([MIN_X, MIN_Y, MIN_YAW, -MAX_VELOCITY[0], -MAX_VELOCITY[1]]).T
+MAX_LIMITS = torch.tensor([MAX_X, MAX_Y, MAX_YAW, MAX_VELOCITY[0], MAX_VELOCITY[0]]).T
 
 def get_dynamics_fn():
     # Dynamics model for husky
@@ -34,36 +37,37 @@ def get_dynamics_fn():
     # u = [u1, u2] where u1, u2 [-1, 1] representing -1 as max deaccleration and 1 as max acceleration
     def dynamics_fn(x, u):
         # u has to be in range
-        if np.max(u) > 1 or np.min(u) < -1:
-            return None
+
+        # if np.max(u) > 1 or np.min(u) < -1:
+        #     return None
         
-        accel = np.multiply(u, MAX_ACCLERATION) * TIME_STEP
-        new_vel = x[3:5] + accel
-        new_vel[0] = np.clip(new_vel[0], -MAX_VELOCITY[0], MAX_VELOCITY[1])
-        new_vel[1] = np.clip(new_vel[1], -MAX_VELOCITY[1], MAX_VELOCITY[1])
+        accel = torch.matmul(u, MAX_ACCLERATION) * TIME_STEP
+        new_vels = x[:, 3:5] + accel
+        new_vels[:, 0] = torch.clamp(new_vels[:, 0], -MAX_VELOCITY[0], MAX_VELOCITY[1])
+        new_vels[:, 1] = torch.clamp(new_vels[:, 1], -MAX_VELOCITY[1], MAX_VELOCITY[1])
 
-        delta_distance = new_vel[0] * TIME_STEP
-        delta_pose = np.array([delta_distance * np.cos(x[2]), delta_distance * np.sin(x[2]), new_vel[1] * TIME_STEP])
-        new_pose = x[0:3] + delta_pose
+        delta_distances = new_vels[:, 0:1] * TIME_STEP
+        delta_poses = torch.cat((delta_distances * torch.cos(x[:, 2:3]), delta_distances * torch.sin(x[:, 2:3]), new_vels[:, 1:2] * TIME_STEP), 1)
+        new_poses = x[:, 0:3] + delta_poses
 
-        xnew = np.hstack((new_pose, new_vel))
+        xnew = torch.cat((new_poses, new_vels), 1)
         return xnew
     return dynamics_fn
 
-def execute_path(robot, start, path, dynamics_fn, draw_path = False):
+def execute_path(robot, start, path, dynamics_fn, goal, draw_path = False):
     x = start
     if draw_path:
         prev_x = x
         count = 0
-    for z in path:
-        for u in z:
-            x = dynamics_fn(x, u)
-            set_pose(robot, x)
-            if draw_path and not count % 5:
-                draw_path_line(prev_x, x)
-                prev_x = x
+    for u in path:
+        x = dynamics_fn(x, u)
+        set_pose(robot, x)
+        if draw_path and not count % 5:
+            draw_path_line(prev_x, x)
+            prev_x = x
 
-            #wait_for_duration(1./240.)
+        wait_for_duration(TIME_STEP)
+        cost = get_cost_fn()
 
 def gen_prims(num_quarter_prims, dynamics_fn, draw_prims=False):
     # End conditions for generating primitives
@@ -173,19 +177,24 @@ def get_sample_fn():
     return sample_fn
 
 def get_cost_fn():
-    def cost_fn(x0, x1):
-        cost = 0
-        for i in range(STATE_DIM):
-            diff = x0[i] - x1[i]
+    Q = torch.tensor([1, 1, 0.4, 0.1, 0.1])
 
-            # Yaw wraps around so treat it differently
-            if i == 2:
-                diff = min(abs(diff), 2*np.pi - abs(diff))
-            
-            # Weight cost based on limits
-            cost += (diff / (MAX_LIMITS[i] - MIN_LIMITS[i])) ** 2
+    def cost_fn(x0, x1):
+        diff = x0 - x1
+        diff[:, 2] = angular_diff_batch(x0[:, 2], x1[:, 2])
+        # diff[:, 2] = torch.minimum(torch.abs(diff[:, 2]), 2*torch.pi - torch.abs(diff[:, 2]))
+        cost = diff ** 2 @ Q
         return cost
     return cost_fn
+
+# For use with MPPI controller
+def get_running_cost_fn(dynamics_fn, cost_fn, goal):
+    R = 0.01
+
+    def running_cost_fn(x, u):
+        cost = u.norm(dim=1) * R + cost_fn(x, torch.matmul(torch.ones((x.size(dim=0), 1)), goal))
+        return cost
+    return running_cost_fn
 
 def draw_path_line(x1, x2, color=(0, 0, 1), width = 1.0):
     draw_line((x1[0], x1[1], 0.01), (x2[0], x2[1], 0.01), width, color)
@@ -195,6 +204,6 @@ def draw_line(start, end, width, color=(0, 0, 1)):
     return line_id
 
 def set_pose(robot, x):
-    position = (x[0], x[1], 0.31769884443141244)
-    rotation = p.getQuaternionFromEuler((0, 0, x[2]))
+    position = (x[0, 0], x[0, 1], 0.31769884443141244)
+    rotation = p.getQuaternionFromEuler((0, 0, x[0, 2]))
     p.resetBasePositionAndOrientation(robot, position, rotation)
