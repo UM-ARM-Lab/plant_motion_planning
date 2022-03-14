@@ -1,4 +1,4 @@
-import numpy as np
+import torch
 import random
 
 class Node:
@@ -16,7 +16,7 @@ class Node:
         path = reverse_path[::-1]
         return path
         
-def rrt_solve(xi, xg, dynamics_fn, collision_fn, cost_fn, sample_fn, prims, goal_sampling=0.1, max_iterations=2000, epsilon=0.1):
+def rrt_solve(xi, xg, dynamics_fn, collision_fn, cost_fn, sample_fn, prims, goal_sampling=0.1, max_iterations=2000, epsilon=0.5):
     root = Node(None, xi, None)
     nodes = [root]
 
@@ -31,7 +31,7 @@ def rrt_solve(xi, xg, dynamics_fn, collision_fn, cost_fn, sample_fn, prims, goal
             is_target_goal = False
         
         # Find nearest neighbor
-        min_cost = np.inf
+        min_cost = torch.inf
         nearest_node = None
         for n in nodes:
             cost = cost_fn(n.x, target)
@@ -39,10 +39,10 @@ def rrt_solve(xi, xg, dynamics_fn, collision_fn, cost_fn, sample_fn, prims, goal
                 min_cost = cost
                 nearest_node = n
         
-        cost_to_target = np.inf
+        cost_to_target = torch.inf
         while True:
             # Try prims to find most optimal one
-            min_cost_to_target = np.inf
+            min_cost_to_target = torch.inf
             min_cost_state = None
             min_cost_prim = None
             for z in prims:

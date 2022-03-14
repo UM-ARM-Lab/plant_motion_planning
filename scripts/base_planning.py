@@ -41,16 +41,14 @@ cost_fn = get_cost_fn()
 running_cost_fn = get_running_cost_fn(goal)
 collision_fn = get_collision_fn()
 
-prims = gen_prims(13, dynamics_fn, d, False)
-# path = rrt_solve(start, goal, dynamics_fn, collision_fn, cost_fn, sample_fn, prims)
+prims = gen_prims(12, dynamics_fn, d, False)
+path = rrt_solve(start, goal, dynamics_fn, collision_fn, cost_fn, sample_fn, prims)
 
-for prim in prims:
-     execute_path(robot, start, prim, dynamics_fn, draw_path=True)
-# if path is not None:
-#     input("Path found! Enter to execute")
-#     execute_path(robot, start, path, dynamics_fn, True)
-# else:
-#     print("No path found")
+if path is not None:
+    input("Path found! Enter to execute")
+    execute_path(robot, start, path, dynamics_fn, True)
+else:
+    print("No path found")
 
 wait_for_user()
 disconnect()

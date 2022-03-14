@@ -61,14 +61,15 @@ def execute_path(robot, start, path, dynamics_fn, draw_path = False):
     if draw_path:
         prev_x = x
         count = 0
-    for u in path:
-        x = dynamics_fn(x, u)
-        set_pose(robot, x)
-        if draw_path and not count % 5:
-            draw_path_line(prev_x, x)
-            prev_x = x
+    for z in path:
+        for u in z:
+            x = dynamics_fn(x, u)
+            set_pose(robot, x)
+            if draw_path and not count % 5:
+                draw_path_line(prev_x, x)
+                prev_x = x
 
-        wait_for_duration(TIME_STEP)
+            wait_for_duration(TIME_STEP)
 
 def gen_prims(num_prims, dynamics_fn, device, draw_prims=False):
     prims = []
@@ -121,7 +122,8 @@ def get_collision_fn():
 
 def get_sample_fn():
     def sample_fn():
-        return np.random.uniform(MIN_LIMITS, MAX_LIMITS)
+        sample = (MIN_LIMITS - MAX_LIMITS) * torch.rand(STATE_DIM) + MIN_LIMITS
+        return torch.reshape(sample, (1, -1))
     return sample_fn
 
 def get_cost_fn(ignore_vel=False):
