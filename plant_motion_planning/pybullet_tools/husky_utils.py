@@ -133,7 +133,7 @@ class HuskyUtils:
 
     def get_sample_fn(self):
         def sample_fn():
-            sample = (self.MIN_LIMITS - self.MAX_LIMITS) * torch.rand(self.STATE_DIM, device=self.device) + self.MIN_LIMITS
+            sample = (self.MAX_LIMITS - self.MIN_LIMITS) * torch.rand(self.STATE_DIM, device=self.device) + self.MIN_LIMITS
             return torch.reshape(sample, (1, -1))
         return sample_fn
 

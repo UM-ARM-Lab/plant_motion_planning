@@ -43,11 +43,12 @@ collision_fn = husky_utils.get_collision_fn()
 steering_fn = husky_utils.get_steering_fn()
 
 prims = husky_utils.gen_prims(num_prims=12)
-path = rrt_solve(start, goal, dynamics_fn, collision_fn, cost_fn, sample_fn, prims)
+path = rrt_solve(start, goal, dynamics_fn, steering_fn, collision_fn, cost_fn, sample_fn, prims)
 
 if path is not None:
     input("Path found! Enter to execute")
-    husky_utils.execute_path(start, path, False)
+    print("Number of path nodes: ", len(path))
+    husky_utils.execute_path(start, path, draw_path=True)
 else:
     print("No path found")
 
