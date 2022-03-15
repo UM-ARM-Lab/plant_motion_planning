@@ -1,7 +1,6 @@
 from cmath import cos
 import random
-from plant_motion_planning.pybullet_tools.husky_utils import execute_path, gen_prims, get_cost_fn, get_running_cost_fn, get_dynamics_fn, \
-     get_sample_fn, get_collision_fn
+from plant_motion_planning.pybullet_tools.husky_utils import HuskyUtils
 from plant_motion_planning.pybullet_tools.kinodynamic_rrt import rrt_solve
 from plant_motion_planning.pybullet_tools.utils import disable_real_time, disconnect, load_model, enable_gravity, set_camera_pose, \
      step_simulation, connect, draw_global_system, HDT_MICHIGAN_URDF, wait_for_user
@@ -28,25 +27,27 @@ p.createMultiBody(0, 0)
 enable_gravity()
 robot = load_model(HDT_MICHIGAN_URDF, pose=((0, 0, 0.31769884443141244), (0, 0, 0, 1)), fixed_base = False)
 
-d = "cpu"
+device = "cpu"
 
-start = torch.tensor([[0., 0., 0., 0., 0.]], device=d)
-goal = torch.tensor([[10., 5., 0., 0., 0.]], device=d)
+start = torch.tensor([[0., 0., 0., 0., 0.]], device=device)
+goal = torch.tensor([[10., 5., 0., 0., 0.]], device=device)
 
 p.addUserDebugText("Goal", goal[0, 0:3], textSize=1, textColorRGB=(0, 1, 0))
 
-dynamics_fn = get_dynamics_fn()
-sample_fn = get_sample_fn()
-cost_fn = get_cost_fn()
-running_cost_fn = get_running_cost_fn(goal)
-collision_fn = get_collision_fn()
+husky_utils = HuskyUtils(robot, device)
 
-prims = gen_prims(12, dynamics_fn, d, False)
+dynamics_fn = husky_utils.get_dynamics_fn()
+sample_fn = husky_utils.get_sample_fn()
+cost_fn = husky_utils.get_cost_fn()
+collision_fn = husky_utils.get_collision_fn()
+steering_fn = husky_utils.get_steering_fn()
+
+prims = husky_utils.gen_prims(num_prims=12)
 path = rrt_solve(start, goal, dynamics_fn, collision_fn, cost_fn, sample_fn, prims)
 
 if path is not None:
     input("Path found! Enter to execute")
-    execute_path(robot, start, path, dynamics_fn, True)
+    husky_utils.execute_path(start, path, False)
 else:
     print("No path found")
 
