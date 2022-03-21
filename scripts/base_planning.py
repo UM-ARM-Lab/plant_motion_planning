@@ -2,9 +2,10 @@ from cmath import cos
 import random
 from plant_motion_planning.pybullet_tools.husky_utils import HuskyUtils
 from plant_motion_planning.pybullet_tools.kinodynamic_rrt import rrt_solve
-from plant_motion_planning.pybullet_tools.utils import disable_real_time, disconnect, load_model, enable_gravity, set_camera_pose, \
+from plant_motion_planning.pybullet_tools.utils import disable_real_time, disconnect, draw_circle, load_model, enable_gravity, set_camera_pose, \
      step_simulation, connect, draw_global_system, HDT_MICHIGAN_URDF, wait_for_user
 from pytorch_mppi import mppi
+from arm_pytorch_utilities import rand
 import torch
 import pybullet as p
 
@@ -16,8 +17,7 @@ disable_real_time()
 # Set camera pose to desired position and orientation
 set_camera_pose((2.5, -1.06, 3.5), (2.5, 2.5, 0.0))
 
-#torch.seed(0)
-random.seed(10)
+
 
 # Draw X, Y, Z axes
 #draw_global_system()
@@ -28,6 +28,11 @@ enable_gravity()
 robot = load_model(HDT_MICHIGAN_URDF, pose=((0, 0, 0.31769884443141244), (0, 0, 0, 1)), fixed_base = False)
 
 device = "cpu"
+
+# 441699
+# 726175 - backwards
+seed = rand.seed(441699)
+print("Seed being used: ", seed)
 
 start = torch.tensor([[0., 0., 0., 0., 0.]], device=device)
 goal = torch.tensor([[10., 5., 0., 0., 0.]], device=device)
@@ -42,13 +47,16 @@ cost_fn = husky_utils.get_cost_fn()
 collision_fn = husky_utils.get_collision_fn()
 steering_fn = husky_utils.get_steering_fn()
 
+print("start prims")
 prims = husky_utils.gen_prims(num_prims=12)
-path = rrt_solve(start, goal, dynamics_fn, steering_fn, collision_fn, cost_fn, sample_fn, prims)
+print("finish prims")
+path, old_path = rrt_solve(start, goal, dynamics_fn, steering_fn, collision_fn, cost_fn, sample_fn, prims)
 
 if path is not None:
     input("Path found! Enter to execute")
     print("Number of path nodes: ", len(path))
-    husky_utils.execute_path(start, path, draw_path=True)
+    husky_utils.execute_path(start, old_path, draw_path=True, color=(1, 0, 0))
+    husky_utils.execute_path(start, path, draw_path=True, color=(0, 0, 1))
 else:
     print("No path found")
 

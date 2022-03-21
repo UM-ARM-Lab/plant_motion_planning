@@ -62,25 +62,23 @@ class HuskyUtils:
             return xnew[0] if x.dim() == 1 else xnew
         return dynamics_fn
 
-    def execute_path(self, start, path, draw_path=False):
+    def execute_path(self, start, path, draw_path=False, color=(0, 0, 1)):
         dynamics_fn = self.get_dynamics_fn()
         x = start
         if draw_path:
             prev_x = x
             count = 0
-        for z in path:
-            for u in z:
-                x = dynamics_fn(x, u)
-                self.set_pose(x)
-                if draw_path and not count % 5:
-                    self.draw_path_line(prev_x, x)
-                    prev_x = x
+        for n in path:
+            self.set_pose(n.x)
+            if draw_path and not count % 5:
+                self.draw_path_line(prev_x, n.x, color=color)
+                prev_x = n.x
 
-                wait_for_duration(self.TIME_STEP)
+            wait_for_duration(self.TIME_STEP)
 
     def gen_prims(self, num_prims, draw_prims=False):
         prims = []
-        steering_fn = self.get_steering_fn(ignore_vel=True)
+        steering_fn = self.get_steering_fn(epsilon=2e-1, ignore_vel=True)
 
         # Evenly spaced points arround the unit circle
         starts = torch.zeros((num_prims, self.STATE_DIM), device=self.device)
@@ -103,24 +101,24 @@ class HuskyUtils:
 
         return prims
 
-    def get_steering_fn(self, max_iterations=1000, ignore_vel=False):
+    def get_steering_fn(self, epsilon=1e-1, ignore_vel=False):
         dynamics_fn = self.get_dynamics_fn()
         cost_fn = self.get_cost_fn(ignore_vel=ignore_vel)
-        def steering_fn(start, goal):
+        def steering_fn(start, goal, max_iterations=100):
             running_cost_fn = self.get_running_cost_fn(goal, cost_fn)
             ctrl = mppi.MPPI(dynamics=dynamics_fn, running_cost=running_cost_fn, nx=self.STATE_DIM, noise_sigma=torch.eye(self.CONTROL_DIM, device=self.device), \
                                 num_samples=1000, device=self.device, u_min=-1*torch.ones((1, 2), device=self.device), u_max=torch.ones((1, 2), device=self.device))
 
             x = torch.reshape(start, (1, -1))
             goal = torch.reshape(goal, (1, -1))
-            z = torch.empty((0, 2), device=self.device)
+            z = []
 
             for i in range(max_iterations):
                 u = torch.reshape(ctrl.command(x), (1, -1))
-                z = torch.cat((z, u), dim=0)
+                z.append(u)
                 x = dynamics_fn(x, u)
 
-                if cost_fn(x, goal) < self.goal_error:
+                if cost_fn(x, goal) < epsilon:
                     break
             return z
         return steering_fn
@@ -128,6 +126,7 @@ class HuskyUtils:
     def get_collision_fn(self):
         # TODO write actual collision 
         def collision_fn(x):
+            self.set_pose(x)
             return False
         return collision_fn
 
@@ -138,7 +137,7 @@ class HuskyUtils:
         return sample_fn
 
     def get_cost_fn(self, ignore_vel=False):
-        Q = torch.tensor([1, 1, 0.3, 3, 0.1], device=self.device)
+        Q = torch.tensor([1, 1, 0.5, 1.0, 0.5], device=self.device)
         if ignore_vel:
             Q = Q[0:3]
 
