@@ -12,12 +12,12 @@ class Node:
         reverse_path = []
         n = self
         while(n.parent is not None):
-            reverse_path.append(n)
+            reverse_path.append(n.x)
             n = n.parent
         path = reverse_path[::-1]
         return path
         
-def rrt_solve(xi, xg, dynamics_fn, steering_fn, collision_fn, cost_fn, sample_fn, prims, goal_sampling=0.1, max_iterations=2000, epsilon=0.5, smoothing_iterations=15):
+def rrt_solve(xi, xg, dynamics_fn, steering_fn, collision_fn, cost_fn, sample_fn, prims, goal_sampling=0.1, max_iterations=2000, epsilon=0.5, smoothing_iterations=50):
     root = Node(None, xi, None)
     nodes = [root]
     print("rrt start")
@@ -49,7 +49,7 @@ def rrt_solve(xi, xg, dynamics_fn, steering_fn, collision_fn, cost_fn, sample_fn
             # Check path for collisions
             for u in z:
                 x = dynamics_fn(x, u)
-                end_path.append(Node(None, x, u))
+                end_path.append(x)
                 if collision_fn(x):
                     continue
             
@@ -94,71 +94,62 @@ def rrt_solve(xi, xg, dynamics_fn, steering_fn, collision_fn, cost_fn, sample_fn
                 else:
                     break
     
-    old_path = path.copy()
+    startIndex = 0
+    endIndex = len(path)-1
+    nodeStack = []
 
-    for i in range(smoothing_iterations):
-        print("Smoothing iteration", i)
-        # Sample two random states on path
-        i0 = random.randint(0, len(path) - 2)
-        i1 = random.randint(i0+1, len(path) - 1)
+    while (startIndex != endIndex or nodeStack) and startIndex != len(path)-1:
+        if startIndex == endIndex:
+            endIndex = startIndex - 1
+            n = nodeStack.pop()
+            startIndex = n[0]
 
-        if i0 != i1:
-            n0 = path[i0]
-            n1 = path[i1]
+        # Try to connect two points
+        print('asdf', path[endIndex])
+        z = steering_fn(path[startIndex], path[endIndex], max_iterations=endIndex-startIndex)
 
-            # Connect states
-            z = steering_fn(n0.x, n1.x, max_iterations=i1-i0)
-
-            # Only proceed if steering function did better than original path
-            # if len(z) == (i1 - i0):
-            #     continue
-
-            x = n0.x
-            smoothed_path = []
+        # Check if steering function worked
+        if len(z) == (endIndex - startIndex):
+            endIndex -= 1
+        
+        # Check path
+        else:
             is_collision = False
-            print(i1 - i0, len(z))
-            # Check collision
+            x = path[startIndex]
+            xs = []
             for u in z:
                 x = dynamics_fn(x, u)
+                xs.append(x)
                 if collision_fn(x):
                     is_collision = True
                     break
-                n = Node(None, x, u)
-                smoothed_path.append(n)
-            if is_collision:
-                continue
             
-            # Check rest of path
-            for i in range(i1+1, len(path)):
-                x = dynamics_fn(x, path[i].u)
-                if collision_fn(x):
-                    is_collision = True
-                    break
-                n = Node(None, x, path[i].u)
-                smoothed_path.append(n)
+            # Check if path was invalid
+            if is_collision or cost_fn(x, path[endIndex]) > epsilon:
+                endIndex -= 1
             
-            if is_collision:
-                continue
+            # Path is valid, push start index on stack and continue
+            else:
+                nodeStack.append((startIndex, xs))
+                startIndex = endIndex
+                endIndex = len(path)-1
+    
+    smoothed_path = []
 
-            # If we end up outside our goal radius, try connecting to the goal again
-            if cost_fn(x, xg) > epsilon:
-                z = steering_fn(x, xg, 10)
-                for u in z:
-                    x = dynamics_fn(x, u)
-                if collision_fn(x):
-                    is_collision = True
-                    break
-                n = Node(None, x, u)
-                smoothed_path.append(n)
+    # Success
+    if startIndex == len(path)-1:
+        print("Smoothed path successfully")
 
-            if is_collision:
-                continue
+        # Get path
+        for n in nodeStack:
+            xs = n[1]
+            smoothed_path = smoothed_path + xs
 
-            # Check if we're still within our goal tolerance
-            if cost_fn(x, xg) < epsilon:
-                print("Smoothing success")
-                path[i0+1:i1+1] = smoothed_path
+    # Failure, just return unsmoothed path
+    else:
+        print("Could not smooth path")
+        smoothed_path = path
 
     print("Ran for ", i, " iterations")
-    return path, old_path
+    return smoothed_path, path
         

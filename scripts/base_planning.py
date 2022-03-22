@@ -17,8 +17,6 @@ disable_real_time()
 # Set camera pose to desired position and orientation
 set_camera_pose((2.5, -1.06, 3.5), (2.5, 2.5, 0.0))
 
-
-
 # Draw X, Y, Z axes
 #draw_global_system()
 
@@ -41,7 +39,7 @@ device = "cpu"
 
 # 441699
 # 726175 - backwards
-seed = rand.seed()
+seed = rand.seed(836801)
 print("Seed being used: ", seed)
 
 start = torch.tensor([[0., 0., 0., 0., 0.]], device=device)

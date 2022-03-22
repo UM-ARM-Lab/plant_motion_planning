@@ -76,11 +76,11 @@ class HuskyUtils:
         if draw_path:
             prev_x = x
             count = 0
-        for n in path:
-            self.set_pose(n.x)
+        for x in path:
+            self.set_pose(x)
             if draw_path and not count % 5:
-                self.draw_path_line(prev_x, n.x, color=color)
-                prev_x = n.x
+                self.draw_path_line(prev_x, x, color=color)
+                prev_x = x
 
             if not draw_path:
                 wait_for_duration(self.TIME_STEP)
@@ -140,7 +140,6 @@ class HuskyUtils:
 
             for i in self.COLLISION_LINKS:
                 if p.getContactPoints(bodyA=self.robot, linkIndexA=i):
-                    print(p.getContactPoints(bodyA=self.robot, linkIndexA=i))
                     return True
             return False
         return collision_fn
