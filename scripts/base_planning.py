@@ -23,15 +23,25 @@ set_camera_pose((2.5, -1.06, 3.5), (2.5, 2.5, 0.0))
 #draw_global_system()
 
 p.createCollisionShape(p.GEOM_PLANE)
-p.createMultiBody(0, 0)
+floor = p.createMultiBody(0, 0)
 enable_gravity()
-robot = load_model(HDT_MICHIGAN_URDF, pose=((0, 0, 0.31769884443141244), (0, 0, 0, 1)), fixed_base = False)
+
+# Find z-coord for robot
+robot = load_model(HDT_MICHIGAN_URDF, pose=((0, 0, 5), (0, 0, 0, 1)), fixed_base = False)
+for t in range(1000):
+    p.stepSimulation()
+pose, quat = p.getBasePositionAndOrientation(robot)
+z_coord = pose[2]
+p.removeBody(robot)
+
+# Load Val for real this time
+robot = load_model(HDT_MICHIGAN_URDF, pose=((0, 0, z_coord), (0, 0, 0, 1)), fixed_base=True)
 
 device = "cpu"
 
 # 441699
 # 726175 - backwards
-seed = rand.seed(441699)
+seed = rand.seed()
 print("Seed being used: ", seed)
 
 start = torch.tensor([[0., 0., 0., 0., 0.]], device=device)
@@ -39,7 +49,7 @@ goal = torch.tensor([[10., 5., 0., 0., 0.]], device=device)
 
 p.addUserDebugText("Goal", goal[0, 0:3], textSize=1, textColorRGB=(0, 1, 0))
 
-husky_utils = HuskyUtils(robot, device)
+husky_utils = HuskyUtils(robot, floor, z_coord, device)
 
 dynamics_fn = husky_utils.get_dynamics_fn()
 sample_fn = husky_utils.get_sample_fn()

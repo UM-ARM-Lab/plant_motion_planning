@@ -9,8 +9,9 @@ from pytorch_mppi import mppi
 from plant_motion_planning.pybullet_tools.utils import step_simulation, wait_for_duration
 
 class HuskyUtils:
-    def __init__(self, robot, device, goal_error = 2e-1):
+    def __init__(self, robot, floor, z_coord, device, goal_error = 2e-1):
         self.robot = robot
+        self.z_coord = z_coord
         self.goal_error = goal_error
         self.device = device
 
@@ -38,6 +39,13 @@ class HuskyUtils:
 
         self.MIN_LIMITS = torch.tensor([MIN_X, MIN_Y, MIN_YAW, -self.MAX_VELOCITY[0], -self.MAX_VELOCITY[1]], device=self.device).T
         self.MAX_LIMITS = torch.tensor([MAX_X, MAX_Y, MAX_YAW, self.MAX_VELOCITY[0], self.MAX_VELOCITY[1]], device=self.device).T
+
+        self.COLLISION_LINKS = [3, 4, 5, 6, 7, 9, 10, 14, 15, 19]
+        self.WHEEL_LINKS = [3, 4, 5, 6]
+
+        # Disable wheels collision with floor
+        for i in self.WHEEL_LINKS:
+            p.setCollisionFilterPair(robot, floor, i, -1, 0)
 
     def get_dynamics_fn(self):
         # Dynamics model for husky
@@ -74,7 +82,8 @@ class HuskyUtils:
                 self.draw_path_line(prev_x, n.x, color=color)
                 prev_x = n.x
 
-            wait_for_duration(self.TIME_STEP)
+            if not draw_path:
+                wait_for_duration(self.TIME_STEP)
 
     def gen_prims(self, num_prims, draw_prims=False):
         prims = []
@@ -127,6 +136,12 @@ class HuskyUtils:
         # TODO write actual collision 
         def collision_fn(x):
             self.set_pose(x)
+            p.performCollisionDetection()
+
+            for i in self.COLLISION_LINKS:
+                if p.getContactPoints(bodyA=self.robot, linkIndexA=i):
+                    print(p.getContactPoints(bodyA=self.robot, linkIndexA=i))
+                    return True
             return False
         return collision_fn
 
@@ -167,6 +182,6 @@ class HuskyUtils:
         return line_id
 
     def set_pose(self, x):
-        position = (x[0, 0], x[0, 1], 0.31769884443141244)
+        position = (x[0, 0], x[0, 1], self.z_coord)
         rotation = p.getQuaternionFromEuler((0, 0, x[0, 2]))
         p.resetBasePositionAndOrientation(self.robot, position, rotation)
