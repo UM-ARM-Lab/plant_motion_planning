@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<robot name="wall">
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="2.5384 0.1 0.5" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="2.5384 0.1 0.5" />
+      </geometry>
+    </collision>
+  </link>
+</robot>

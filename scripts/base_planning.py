@@ -1,5 +1,6 @@
 from cmath import cos
 import random
+from plant_motion_planning.plant import Plant
 from plant_motion_planning.pybullet_tools.husky_utils import HuskyUtils
 from plant_motion_planning.pybullet_tools.kinodynamic_rrt import rrt_solve
 from plant_motion_planning.pybullet_tools.utils import disable_real_time, disconnect, draw_circle, load_model, enable_gravity, set_camera_pose, \
@@ -20,12 +21,26 @@ set_camera_pose((2.5, -1.06, 3.5), (2.5, 2.5, 0.0))
 # Draw X, Y, Z axes
 #draw_global_system()
 
+device = "cpu"
+
+start = torch.tensor([[-0.5, -0.5, 0., 0., 0.]], device=device)
+goal = torch.tensor([[3., 2., torch.pi, 0., 0.]], device=device)
+
 p.createCollisionShape(p.GEOM_PLANE)
 floor = p.createMultiBody(0, 0)
 enable_gravity()
 
+GARDEN_WIDTH = 1.2192
+GARDEN_LENGTH = 2.4384
+GARDEN_BORDER = 0.1
+
+wall1 = load_model("models/wall_short.urdf", fixed_base=True, pose=((0, GARDEN_WIDTH / 2, 0), (0, 0, 0, 1)))
+wall2 = load_model("models/wall_short.urdf", fixed_base=True, pose=((GARDEN_LENGTH + GARDEN_BORDER, GARDEN_WIDTH / 2, 0), (0, 0, 0, 1)))
+wall3 = load_model("models/wall_long.urdf", fixed_base=True, pose=((GARDEN_WIDTH, 0, 0), (0, 0, 0, 1)))
+wall4 = load_model("models/wall_long.urdf", fixed_base=True, pose=((GARDEN_WIDTH + GARDEN_BORDER, GARDEN_WIDTH, 0), (0, 0, 0, 1)))
+
 # Find z-coord for robot
-robot = load_model(HDT_MICHIGAN_URDF, pose=((0, 0, 5), (0, 0, 0, 1)), fixed_base = False)
+robot = load_model(HDT_MICHIGAN_URDF, pose=((start[0, 0], start[0, 1], 5), (0, 0, 0, 1)), fixed_base = False)
 for t in range(1000):
     p.stepSimulation()
 pose, quat = p.getBasePositionAndOrientation(robot)
@@ -33,21 +48,27 @@ z_coord = pose[2]
 p.removeBody(robot)
 
 # Load Val for real this time
-robot = load_model(HDT_MICHIGAN_URDF, pose=((0, 0, z_coord), (0, 0, 0, 1)), fixed_base=True)
-
-device = "cpu"
+robot = load_model(HDT_MICHIGAN_URDF, pose=((start[0, 0], start[0, 1], z_coord), (0, 0, 0, 1)), fixed_base=True)
 
 # 441699
 # 726175 - backwards
-seed = rand.seed(836801)
+# 836801
+#368572
+#619864 - gets stuck
+#381457 - for with smoothing - interesting case
+#462712 - smoothing fails
+#114699 - loops
+seed = rand.seed(381457)
 print("Seed being used: ", seed)
 
-start = torch.tensor([[0., 0., 0., 0., 0.]], device=device)
-goal = torch.tensor([[10., 5., 0., 0., 0.]], device=device)
-
-p.addUserDebugText("Goal", goal[0, 0:3], textSize=1, textColorRGB=(0, 1, 0))
+p.addUserDebugText("Goal", (goal[0, 0], goal[0, 1], 0), textSize=1, textColorRGB=(0, 1, 0))
 
 husky_utils = HuskyUtils(robot, floor, z_coord, device)
+
+p1 = Plant(1, 2, 1, (GARDEN_LENGTH / 3, GARDEN_WIDTH / 3))
+p2 = Plant(1, 2, 1, (GARDEN_LENGTH / 3, 2 * GARDEN_WIDTH / 3))
+p3 = Plant(1, 2, 1, (2 * GARDEN_LENGTH / 3, GARDEN_WIDTH / 3))
+p4 = Plant(1, 2, 1, (2 * GARDEN_LENGTH / 3, 2 * GARDEN_WIDTH / 3))
 
 dynamics_fn = husky_utils.get_dynamics_fn()
 sample_fn = husky_utils.get_sample_fn()
@@ -55,16 +76,24 @@ cost_fn = husky_utils.get_cost_fn()
 collision_fn = husky_utils.get_collision_fn()
 steering_fn = husky_utils.get_steering_fn()
 
+# for i in range(0, p.getNumJoints(robot)+1):
+#     p.changeVisualShape(robot, i, rgbaColor=(0, 1, 0, 1))
+#     input(i)
+#     p.changeVisualShape(robot, i, rgbaColor=(1, 1, 1, 1))
+
 print("start prims")
-prims = husky_utils.gen_prims(num_prims=12)
+prims = husky_utils.gen_prims(num_prims=12, draw_prims=True)
 print("finish prims")
-path, old_path = rrt_solve(start, goal, dynamics_fn, steering_fn, collision_fn, cost_fn, sample_fn, prims)
+
+path,old_path = rrt_solve(start, goal, dynamics_fn, steering_fn, collision_fn, cost_fn, sample_fn, prims, husky_utils.execute_path)
 
 if path is not None:
     input("Path found! Enter to execute")
     print("Number of path nodes: ", len(path))
     husky_utils.execute_path(start, old_path, draw_path=True, color=(1, 0, 0))
+    #log = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4, fileName='vid.mp4')
     husky_utils.execute_path(start, path, draw_path=True, color=(0, 0, 1))
+    #p.stopStateLogging(log)
 else:
     print("No path found")
 

@@ -19,18 +19,15 @@ scaling_factor = 0.25
 #stem_base_spacing = scaling_factor * 0.2
 stem_base_spacing = 0
 
-# Variables to keep track of indices
-current_index = 0
-main_stem_index = 0
-
 stem_half_height = {}
 
 
 
-def create_stem_element(stem_half_length, stem_half_width):
+def create_stem_element(stem_half_length, stem_half_width, current_index):
 
     stem_half_height[current_index] = np.random.uniform(low=scaling_factor * 0.7, high=scaling_factor * 1.0)
-
+    print("asdf", stem_half_length, stem_half_width, stem_half_height[current_index], stem_base_spacing + stem_half_height[current_index])
+    input()
     col_stem_id = p.createCollisionShape(
         p.GEOM_BOX, halfExtents=[stem_half_length, stem_half_width, stem_half_height[current_index]],
         collisionFramePosition=[0, 0, stem_base_spacing + stem_half_height[current_index]]
@@ -79,7 +76,8 @@ def create_plant_params(num_branches_per_stem,
     # total_num_vert_stems = 3
     # total_num_extensions = 1
 
-    global current_index, main_stem_index
+    current_index = 0
+    main_stem_index = 0
 
     base_half_width = np.random.uniform(low=scaling_factor * 0.07, high=scaling_factor * 0.15)
     base_half_length = np.random.uniform(low=scaling_factor * 0.07, high=scaling_factor * 0.15)
@@ -255,7 +253,7 @@ def create_plant_params(num_branches_per_stem,
 
 
         link_mass = [0, 10]
-        col_stem_id, vis_stem_id = create_stem_element(stem_half_length, stem_half_width)
+        col_stem_id, vis_stem_id = create_stem_element(stem_half_length, stem_half_width, current_index)
 
         # link_Masses  = link_Masses + [link_mass, link_mass]
         link_Masses  = link_Masses + link_mass
@@ -279,12 +277,6 @@ def create_plant_params(num_branches_per_stem,
 
 def create_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_extensions, base_pos_xy, stem_half_length=0.1,
                         stem_half_width=0.1):
-
-    global current_index, main_stem_index
-
-    current_index = 0
-    main_stem_index = 0
-
     base_params, stems_params, main_stem_indices = create_plant_params(num_branches_per_stem, total_num_vert_stems,
                                                                        total_num_extensions, base_pos_xy)
 
