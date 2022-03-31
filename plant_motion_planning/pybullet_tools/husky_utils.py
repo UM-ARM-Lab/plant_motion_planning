@@ -3,6 +3,7 @@ import pybullet as p
 import rospkg
 import torch
 import yaml
+import re
 from arm_pytorch_utilities.math_utils import angular_diff_batch
 from pytorch_mppi import mppi
 
@@ -10,7 +11,7 @@ from plant_motion_planning.pybullet_tools.utils import step_simulation, wait_for
 
 
 class HuskyUtils:
-    def __init__(self, robot, floor, z_coord, device, goal_error=2e-1):
+    def __init__(self, robot, floor, z_coord, device, arm_joints, srdf_file, goal_error=2e-1):
         self.robot = robot
         self.z_coord = z_coord
         self.goal_error = goal_error
@@ -45,12 +46,35 @@ class HuskyUtils:
         self.MAX_LIMITS = torch.tensor([MAX_X, MAX_Y, MAX_YAW, self.MAX_VELOCITY[0], self.MAX_VELOCITY[1]],
                                        device=self.device).T
 
-        self.COLLISION_LINKS = [3, 4, 5, 6, 7, 9, 10, 14, 15, 19]
-        self.WHEEL_LINKS = [3, 4, 5, 6]
+        self.base_collision_links = [3, 4, 5, 6, 7, 9, 10, 14, 15, 19]
+        
+        self.wheel_links = [3, 4, 5, 6]
+        self.arm_joints = arm_joints
 
         # Disable wheels collision with floor
-        for i in self.WHEEL_LINKS:
+        for i in self.wheel_links:
             p.setCollisionFilterPair(robot, floor, i, -1, 0)
+
+        # Disable self collision with arms
+        # Build dictionary 
+        link_name_to_index = {}
+        link_name_to_index["base_link"] = -1
+        for j in range(p.getNumJoints(self.robot)):
+            link_name = p.getJointInfo(self.robot, j)[12].decode('UTF-8')
+            link_name_to_index[link_name] = j
+        srdf = open(srdf_file).read()
+        regex = r'<\s*disable_collisions\s+link1="(\w+)"\s+link2="(\w+)"\s+reason="(\w+)"\s*/>'
+        for link1, link2, reason in re.findall(regex, srdf):
+            if link1 != "collision_sphere" and link2 != "collision_sphere":
+                p.setCollisionFilterPair(self.robot, self.robot, link_name_to_index[link1], link_name_to_index[link2], 0)
+        
+        # Create joint limits
+        self.joint_limits = []
+        for j in arm_joints:
+            joint_info = p.getJointInfo(self.robot, j)
+            lower_limit = joint_info[8]
+            upper_limit = joint_info[9]
+            self.joint_limits.append((lower_limit, upper_limit))
 
     def get_dynamics_fn(self):
         # Dynamics model for husky
@@ -152,13 +176,32 @@ class HuskyUtils:
 
     def get_collision_fn(self):
         # TODO write actual collision 
-        def collision_fn(x):
+        def collision_fn(x, q):
             self.set_pose(x)
+            self.set_joint_configuration(q)
+
             p.performCollisionDetection()
 
-            for i in self.COLLISION_LINKS:
-                if p.getContactPoints(bodyA=self.robot, linkIndexA=i):
+            # Check base collision
+            for i in self.base_collision_links:
+                points = p.getContactPoints(bodyA=self.robot, linkIndexA=i)
+                if points:
+                    print("Physical collision", points)
                     return True
+            
+            # Check joint limits
+            for value, limits in zip(q, self.joint_limits):
+                if value < limits[0] or value > limits[1]:
+                    return True
+
+            # Check self collision
+            for i in range(len(self.arm_joints)):
+                for j in range(i+1, len(self.arm_joints)):
+                    points = p.getContactPoints(bodyA=self.robot, linkIndexA=self.arm_joints[i], bodyB=self.robot, linkIndexB=self.arm_joints[j])
+                    if points:
+                        print(points)
+                        return True
+            
             return False
 
         return collision_fn
@@ -207,3 +250,7 @@ class HuskyUtils:
         position = (x[0, 0], x[0, 1], self.z_coord)
         rotation = p.getQuaternionFromEuler((0, 0, x[0, 2]))
         p.resetBasePositionAndOrientation(self.robot, position, rotation)
+    
+    def set_joint_configuration(self, q):
+        for j, value in zip(self.arm_joints, q):
+            p.resetJointState(self.robot, j, value)

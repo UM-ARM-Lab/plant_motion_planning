@@ -1,10 +1,11 @@
 from cmath import cos
 import random
+from plant_motion_planning.pybullet_tools.val_utils import get_arm_joints
 from plant_motion_planning.plant import Plant
 from plant_motion_planning.pybullet_tools.husky_utils import HuskyUtils
 from plant_motion_planning.pybullet_tools.kinodynamic_rrt import rrt_solve
 from plant_motion_planning.pybullet_tools.utils import disable_real_time, disconnect, draw_circle, load_model, enable_gravity, set_camera_pose, \
-     step_simulation, connect, draw_global_system, HDT_MICHIGAN_URDF, wait_for_user
+     step_simulation, connect, draw_global_system, HDT_MICHIGAN_URDF, HDT_MICHIGAN_SRDF, wait_for_user
 from pytorch_mppi import mppi
 from arm_pytorch_utilities import rand
 import torch
@@ -40,7 +41,7 @@ wall3 = load_model("models/wall_long.urdf", fixed_base=True, pose=((GARDEN_WIDTH
 wall4 = load_model("models/wall_long.urdf", fixed_base=True, pose=((GARDEN_WIDTH + GARDEN_BORDER, GARDEN_WIDTH, 0), (0, 0, 0, 1)))
 
 # Find z-coord for robot
-robot = load_model(HDT_MICHIGAN_URDF, pose=((start[0, 0], start[0, 1], 5), (0, 0, 0, 1)), fixed_base = False)
+robot = p.loadURDF(HDT_MICHIGAN_URDF, basePosition=(start[0, 0], start[0, 1], 5))
 for t in range(1000):
     p.stepSimulation()
 pose, quat = p.getBasePositionAndOrientation(robot)
@@ -48,7 +49,7 @@ z_coord = pose[2]
 p.removeBody(robot)
 
 # Load Val for real this time
-robot = load_model(HDT_MICHIGAN_URDF, pose=((start[0, 0], start[0, 1], z_coord), (0, 0, 0, 1)), fixed_base=True)
+robot = p.loadURDF(HDT_MICHIGAN_URDF, basePosition=(start[0, 0], start[0, 1], z_coord), useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION)
 
 # 441699
 # 726175 - backwards
@@ -63,7 +64,12 @@ print("Seed being used: ", seed)
 
 p.addUserDebugText("Goal", (goal[0, 0], goal[0, 1], 0), textSize=1, textColorRGB=(0, 1, 0))
 
-husky_utils = HuskyUtils(robot, floor, z_coord, device)
+arm_joints = get_arm_joints(robot, is_left=True, include_torso=False)
+q = []
+for j in arm_joints:
+    q.append(p.getJointState(robot, j)[0])
+
+husky_utils = HuskyUtils(robot, floor, z_coord, device, arm_joints, HDT_MICHIGAN_SRDF)
 
 p1 = Plant(1, 2, 1, (GARDEN_LENGTH / 3, GARDEN_WIDTH / 3))
 p2 = Plant(1, 2, 1, (GARDEN_LENGTH / 3, 2 * GARDEN_WIDTH / 3))

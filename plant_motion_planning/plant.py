@@ -3,8 +3,14 @@ import numpy as np
 import pybullet as p
 
 class Plant:
-    def __init__(self, num_branches_per_stem, total_num_vert_stems, total_num_extensions, base_pos_xy):
+    def __init__(self, num_branches_per_stem, total_num_vert_stems, total_num_extensions, base_pos_xy, deflection_limit=np.pi/4):
         self.base_id, self.joint_list = self.create_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_extensions, base_pos_xy)
+        self.link_reps = []
+        self.deflection_limit = deflection_limit
+
+        for e, link_idx in enumerate(range(1, p.getNumJoints(self.base_id), 2)):
+            self.link_reps.append(TwoAngleRepresentation(self.base_id, link_idx, self.base_points[link_idx],
+                                                              parent_lid=self.link_parent_indices[link_idx]))
     
     def create_stem_element(self, stem_half_length, stem_half_width, current_index, scaling_factor, stem_half_height, stem_base_spacing):
         stem_half_height[current_index] = np.random.uniform(low=scaling_factor * 0.7, high=scaling_factor * 1.0)
@@ -56,9 +62,10 @@ class Plant:
 
         scaling_factor = 0.25
 
-        base_points = {}
+        self.base_points = {}
+
         main_stem_indices = []
-        link_parent_indices = {}
+        self.link_parent_indices = {}
 
         stem_half_height = {}
         stem_base_spacing = 0
@@ -129,9 +136,9 @@ class Plant:
                 main_stem_index = current_index
                 main_stem_indices.append(main_stem_index)
 
-                base_points[current_index-1] = [base_pos_xy[0], base_pos_xy[1], 2 * v1_pos[2]]
+                self.base_points[current_index-1] = [base_pos_xy[0], base_pos_xy[1], 2 * v1_pos[2]]
 
-                link_parent_indices[current_index-1] = -1
+                self.link_parent_indices[current_index-1] = -1
 
 
             elif(branch_count <= num_branches_per_stem):
@@ -152,7 +159,7 @@ class Plant:
                     indices = indices + [current_index, current_index + 1]
                     current_index = current_index + 2
 
-                    link_parent_indices[current_index-1] = current_index - 2 - 1
+                    self.link_parent_indices[current_index-1] = current_index - 2 - 1
 
                     if(num_extensions == total_num_extensions):
                         branch_count = branch_count + 1
@@ -202,9 +209,9 @@ class Plant:
                     current_index = current_index + 2
                     indices = indices + [main_stem_index, current_index - 1]
 
-                    link_parent_indices[current_index-1] = main_stem_index - 1
+                    self.link_parent_indices[current_index-1] = main_stem_index - 1
 
-                base_points[current_index-1] = [base_pos_xy[0], base_pos_xy[1], v1_pos[2]]
+                self.base_points[current_index-1] = [base_pos_xy[0], base_pos_xy[1], v1_pos[2]]
 
 
             elif(vert_stem_count == total_num_vert_stems):
@@ -231,12 +238,12 @@ class Plant:
 
                 current_index = current_index + 2
                 indices = indices + [main_stem_index, current_index - 1]
-                link_parent_indices[current_index-1] = main_stem_index - 1
+                self.link_parent_indices[current_index-1] = main_stem_index - 1
 
                 main_stem_index = current_index
                 main_stem_indices.append(main_stem_index)
 
-                base_points[current_index-1] = [base_pos_xy[0], base_pos_xy[1], v1_pos[2]]
+                self.base_points[current_index-1] = [base_pos_xy[0], base_pos_xy[1], v1_pos[2]]
 
 
             link_mass = [0, 10]
@@ -288,3 +295,86 @@ class Plant:
             p.changeDynamics(base_id, j, jointLowerLimit=-1.5, jointUpperLimit=1.5, jointDamping=10, linearDamping=1.5)
 
         return base_id, joint_list
+
+    def check_deflection(self):
+        last_angle = 0
+
+        for e, b in enumerate(self.link_reps):
+
+            b.observe()
+            # if(b.deflection > self.deflection_limit):
+            #     return False
+
+            # print(b.deflection)
+            # print(last_angle)
+            # print("======================")
+            b.deflection = b.deflection - last_angle
+
+            if(b.deflection < 0):
+                b.deflection = 0
+
+            print(b.deflection)
+            if b.deflection > self.deflection_limit:
+                return True
+
+            if((2 * e + 2) in self.main_stem_indices):
+                # if(True):
+                # counter = counter + 1
+                last_angle = b.deflection
+
+        return False
+
+class TwoAngleRepresentation():
+
+    def __init__(self, base_id, link_id, base_point, parent_lid, joint_id = 0, deflection=0, orientation=0):
+        self.bid = base_id
+        self.lid = link_id
+        self.jid = joint_id
+
+        self.deflection = deflection
+        self.orientation = orientation
+
+        self.base_point = np.array(base_point)
+        # self.base_point[2] = 2 * self.base_point[2]
+        init_pos = np.array(p.getLinkState(self.bid, self.lid)[0])
+        self.init_vec = init_pos - base_point
+
+        if(parent_lid == -1):
+            self.parent_lid = None
+            self.init_ori = p.getLinkState(self.bid, self.lid)[1]
+        else:
+            self.parent_lid = parent_lid
+            self.init_ori = p.getDifferenceQuaternion(p.getLinkState(self.bid, self.lid)[1], p.getLinkState(self.bid,
+                                                                                                        parent_lid)[1])
+
+
+        # print("self.base_point: ", self.base_point)
+        # print("initial link pos: ", init_pos)
+        # print("init vec: ", self.init_vec)
+        # input("")
+
+    def observe(self):
+        """Observe the deflection and orientation of the plant in the current environment"""
+
+        # Get the link state from body ID and link ID
+        link_state = p.getLinkState(self.bid, self.lid)
+
+        link_pos = link_state[0]
+        if(self.parent_lid is None):
+            link_ori_quat = link_state[1]
+        else:
+            link_ori_quat = p.getDifferenceQuaternion(link_state[1], p.getLinkState(self.bid, self.parent_lid)[1])
+
+        diff_quat = p.getDifferenceQuaternion(link_ori_quat, self.init_ori)
+        diff_rpy = p.getEulerFromQuaternion(diff_quat)
+
+        self.deflection = np.sqrt((diff_rpy[0]**2) + (diff_rpy[1]**2))
+
+    def get_joint_id(self):
+        return self.jid
+
+    def set_state(self, deflection, orientation):
+        """Set the state of the plant joint in the current environment"""
+        # TODO
+        self.deflection = deflection
+        self.orientation = orientation
