@@ -4,6 +4,7 @@ import rospkg
 import torch
 import yaml
 import re
+import random
 from arm_pytorch_utilities.math_utils import angular_diff_batch
 from pytorch_mppi import mppi
 
@@ -29,9 +30,11 @@ class HuskyUtils:
         self.MAX_ACCLERATION = torch.diag(
             torch.tensor([linear_params['max_acceleration'], angular_params['max_acceleration']], device=self.device))
         self.TIME_STEP = 1. / 240. * 50
+        self.max_step_size = self.TIME_STEP * torch.pi / 4
 
         self.STATE_DIM = 5
         self.CONTROL_DIM = 2
+        self.ARM_CONF_DIM = len(arm_joints)
 
         MIN_X = -5
         MIN_Y = -5
@@ -108,7 +111,9 @@ class HuskyUtils:
             count = 0
         for n in path:
             x = n.x
+            q = n.q
             self.set_pose(x)
+            self.set_joint_configuration(q)
             if draw_path and not count % 5:
                 self.draw_path_line(prev_x, x, color=color)
                 prev_x = x
@@ -144,7 +149,7 @@ class HuskyUtils:
 
     def get_steering_fn(self, epsilon=1e-1, ignore_vel=False, terminal_state_weight=5):
         dynamics_fn = self.get_dynamics_fn()
-        cost_fn = self.get_cost_fn(ignore_vel=ignore_vel)
+        cost_fn = self.get_base_cost_fn(ignore_vel=ignore_vel)
 
         def steering_fn(start, goal, max_iterations=100):
             # give it a terminal cost to encourage actually arriving at the goal
@@ -152,7 +157,7 @@ class HuskyUtils:
             def terminal_cost_fn(current_node, actions):
                 return terminal_state_weight * cost_fn(current_node[:, -1], goal), actions
 
-            running_cost_fn = self.get_running_cost_fn(goal, cost_fn)
+            running_cost_fn = self.get_base_running_cost_fn(goal, cost_fn)
             ctrl = mppi.MPPI(dynamics=dynamics_fn, running_cost=running_cost_fn, terminal_state_cost=terminal_cost_fn,
                              nx=self.STATE_DIM, noise_sigma=torch.eye(self.CONTROL_DIM, device=self.device),
                              num_samples=100, horizon=15, device=self.device,
@@ -173,6 +178,20 @@ class HuskyUtils:
             return z
 
         return steering_fn
+    
+    def get_connect_fn(self):
+        def connect_fn(qi, qg, num_steps):
+            step = (qg - qi) / num_steps
+            if False and torch.linalg.norm(step) > self.max_step_size:
+                return None
+            else:
+                arm_path = []
+                q = qi
+                for i in range(num_steps):
+                    q = q + step
+                    arm_path.append(q)
+                return arm_path
+        return connect_fn
 
     def get_collision_fn(self):
         # TODO write actual collision 
@@ -186,7 +205,6 @@ class HuskyUtils:
             for i in self.base_collision_links:
                 points = p.getContactPoints(bodyA=self.robot, linkIndexA=i)
                 if points:
-                    print("Physical collision", points)
                     return True
             
             # Check joint limits
@@ -208,18 +226,21 @@ class HuskyUtils:
 
     def get_sample_fn(self):
         def sample_fn():
-            sample = (self.MAX_LIMITS - self.MIN_LIMITS) * torch.rand(self.STATE_DIM,
-                                                                      device=self.device) + self.MIN_LIMITS
-            return torch.reshape(sample, (1, -1))
+            x = torch.reshape((self.MAX_LIMITS - self.MIN_LIMITS) * torch.rand(self.STATE_DIM,
+                                                                      device=self.device) + self.MIN_LIMITS, (1, -1))
+            q = torch.zeros(self.ARM_CONF_DIM, device=self.device)
+            for i in range(self.ARM_CONF_DIM):
+                q[i] = random.uniform(self.joint_limits[i][0], self.joint_limits[i][1])
+            return x, q
 
         return sample_fn
 
-    def get_cost_fn(self, ignore_vel=False):
+    def get_base_cost_fn(self, ignore_vel=False):
         Q = torch.tensor([1, 1, 0.50, 0.25, 0.125], device=self.device)
         if ignore_vel:
             Q = Q[0:3]
 
-        def cost_fn(x0, x1):
+        def base_cost_fn(x0, x1):
             diff = x0 - x1
             if ignore_vel:
                 diff = diff[:, 0:3]
@@ -227,17 +248,22 @@ class HuskyUtils:
             cost = diff ** 2 @ Q
             return cost
 
-        return cost_fn
+        return base_cost_fn
 
     # For use with MPPI controller
-    def get_running_cost_fn(self, goal, cost_fn):
+    def get_base_running_cost_fn(self, goal, cost_fn):
         R = 0.01
 
-        def running_cost_fn(x, u):
+        def base_running_cost_fn(x, u):
             cost = u.norm(dim=1) * R + cost_fn(x, goal.repeat(x.size()[0], 1))
             return cost
 
-        return running_cost_fn
+        return base_running_cost_fn
+    
+    def get_arms_cost_fn(self):
+        def arms_cost_fn(qi, qg):
+            return torch.linalg.norm(qi - qg)
+        return arms_cost_fn
 
     def draw_path_line(self, x1, x2, color=(0, 0, 1), width=1.0):
         self.draw_line((x1[0, 0], x1[0, 1], 0.01), (x2[0, 0], x2[0, 1], 0.01), width, color)

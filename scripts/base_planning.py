@@ -65,9 +65,7 @@ print("Seed being used: ", seed)
 p.addUserDebugText("Goal", (goal[0, 0], goal[0, 1], 0), textSize=1, textColorRGB=(0, 1, 0))
 
 arm_joints = get_arm_joints(robot, is_left=True, include_torso=False)
-q = []
-for j in arm_joints:
-    q.append(p.getJointState(robot, j)[0])
+q = torch.zeros(len(arm_joints), device=device)
 
 husky_utils = HuskyUtils(robot, floor, z_coord, device, arm_joints, HDT_MICHIGAN_SRDF)
 
@@ -78,9 +76,11 @@ p4 = Plant(1, 2, 1, (2 * GARDEN_LENGTH / 3, 2 * GARDEN_WIDTH / 3))
 
 dynamics_fn = husky_utils.get_dynamics_fn()
 sample_fn = husky_utils.get_sample_fn()
-cost_fn = husky_utils.get_cost_fn()
+base_cost_fn = husky_utils.get_base_cost_fn()
+arms_cost_fn = husky_utils.get_arms_cost_fn()
 collision_fn = husky_utils.get_collision_fn()
 steering_fn = husky_utils.get_steering_fn()
+connect_fn = husky_utils.get_connect_fn()
 
 # for i in range(0, p.getNumJoints(robot)+1):
 #     p.changeVisualShape(robot, i, rgbaColor=(0, 1, 0, 1))
@@ -91,7 +91,7 @@ print("start prims")
 prims = husky_utils.gen_prims(num_prims=12, draw_prims=True)
 print("finish prims")
 
-path,old_path = rrt_solve(start, goal, dynamics_fn, steering_fn, collision_fn, cost_fn, sample_fn, prims, husky_utils.execute_path)
+path,old_path = rrt_solve((start, q), (goal, q), dynamics_fn, steering_fn, connect_fn, collision_fn, base_cost_fn, arms_cost_fn, sample_fn, prims, husky_utils.execute_path)
 
 if path is not None:
     input("Path found! Enter to execute")
