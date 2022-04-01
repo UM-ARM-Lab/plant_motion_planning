@@ -30,6 +30,15 @@ class HuskyUtils:
         self.MAX_ACCLERATION = torch.diag(
             torch.tensor([linear_params['max_acceleration'], angular_params['max_acceleration']], device=self.device))
         self.TIME_STEP = 1. / 240. * 50
+
+        joint_velocity_limits = []
+        with open(r.get_path('hdt_michigan_moveit') + '/config/joint_limits.yaml') as stream:
+            parsed_yaml = yaml.safe_load(stream)
+            limits_params = parsed_yaml["joint_limits"]
+            for j in arm_joints:
+                joint_name = p.getJointInfo(self.robot, j)[1].decode('UTF-8')
+                velocity_limit = limits_params[joint_name]["max_velocity"]
+
         self.max_step_size = self.TIME_STEP * torch.pi / 4
 
         self.STATE_DIM = 5

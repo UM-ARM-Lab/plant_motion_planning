@@ -4,7 +4,7 @@ from plant_motion_planning.pybullet_tools.val_utils import get_arm_joints
 from plant_motion_planning.plant import Plant
 from plant_motion_planning.pybullet_tools.husky_utils import HuskyUtils
 from plant_motion_planning.pybullet_tools.kinodynamic_rrt import rrt_solve
-from plant_motion_planning.pybullet_tools.utils import disable_real_time, disconnect, draw_circle, load_model, enable_gravity, set_camera_pose, \
+from plant_motion_planning.pybullet_tools.utils import disable_real_time, disconnect, draw_circle, get_movable_joints, load_model, enable_gravity, set_camera_pose, \
      step_simulation, connect, draw_global_system, HDT_MICHIGAN_URDF, HDT_MICHIGAN_SRDF, wait_for_user
 from pytorch_mppi import mppi
 from arm_pytorch_utilities import rand
