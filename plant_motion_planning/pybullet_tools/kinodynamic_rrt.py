@@ -20,7 +20,7 @@ class Node:
         path = reverse_path[::-1]
         return path
         
-def rrt_solve(start, goal, dynamics_fn, steering_fn, connect_fn, collision_fn, base_cost_fn, arms_cost_fn, sample_fn, prims, execute_fn, goal_sampling=0.1, max_iterations=500, epsilon=1e-1, smoothing_iterations=20):
+def rrt_solve(start, goal, dynamics_fn, steering_fn, connect_fn, collision_fn, base_cost_fn, arms_cost_fn, sample_fn, prims, execute_fn, goal_sampling=0.1, max_iterations=5000, epsilon=1e-1, smoothing_iterations=20):
     xi = start[0]
     xg = goal[0]
     qi = start[1]
@@ -46,7 +46,7 @@ def rrt_solve(start, goal, dynamics_fn, steering_fn, connect_fn, collision_fn, b
         min_cost = torch.inf
         nearest_node = None
         for n in nodes:
-            cost = base_cost_fn(n.x, targetx) + arms_cost_fn(n.q, targetq)
+            cost = base_cost_fn(n.x, targetx) + arms_cost_fn(n.q, targetq) * 3
             if cost < min_cost and not(is_target_goal and n.x in goal_attempts):
                 min_cost = cost
                 nearest_node = n

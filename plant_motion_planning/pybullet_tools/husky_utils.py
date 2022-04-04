@@ -18,6 +18,15 @@ class HuskyUtils:
         self.goal_error = goal_error
         self.device = device
 
+        self.STATE_DIM = 5
+        self.CONTROL_DIM = 2
+        self.ARM_CONF_DIM = len(arm_joints)
+
+        self.base_collision_links = [3, 4, 5, 6, 7, 9, 10, 14, 15, 19]
+        self.wheel_links = [3, 4, 5, 6]
+        self.arm_joints = arm_joints
+
+        # Get base params
         r = rospkg.RosPack()
         with open(r.get_path('husky_control') + '/config/control.yaml') as stream:
             parsed_yaml = yaml.safe_load(stream)
@@ -30,20 +39,6 @@ class HuskyUtils:
         self.MAX_ACCLERATION = torch.diag(
             torch.tensor([linear_params['max_acceleration'], angular_params['max_acceleration']], device=self.device))
         self.TIME_STEP = 1. / 240. * 50
-
-        joint_velocity_limits = []
-        with open(r.get_path('hdt_michigan_moveit') + '/config/joint_limits.yaml') as stream:
-            parsed_yaml = yaml.safe_load(stream)
-            limits_params = parsed_yaml["joint_limits"]
-            for j in arm_joints:
-                joint_name = p.getJointInfo(self.robot, j)[1].decode('UTF-8')
-                velocity_limit = limits_params[joint_name]["max_velocity"]
-
-        self.max_step_size = self.TIME_STEP * torch.pi / 4
-
-        self.STATE_DIM = 5
-        self.CONTROL_DIM = 2
-        self.ARM_CONF_DIM = len(arm_joints)
 
         MIN_X = -5
         MIN_Y = -5
@@ -58,14 +53,15 @@ class HuskyUtils:
         self.MAX_LIMITS = torch.tensor([MAX_X, MAX_Y, MAX_YAW, self.MAX_VELOCITY[0], self.MAX_VELOCITY[1]],
                                        device=self.device).T
 
-        self.base_collision_links = [3, 4, 5, 6, 7, 9, 10, 14, 15, 19]
-        
-        self.wheel_links = [3, 4, 5, 6]
-        self.arm_joints = arm_joints
-
-        # Disable wheels collision with floor
-        for i in self.wheel_links:
-            p.setCollisionFilterPair(robot, floor, i, -1, 0)
+        # Get arm params
+        self.joint_velocity_limits = torch.zeros(self.ARM_CONF_DIM, device=self.device)
+        with open(r.get_path('hdt_michigan_moveit') + '/config/joint_limits.yaml') as stream:
+            parsed_yaml = yaml.safe_load(stream)
+            limits_params = parsed_yaml["joint_limits"]
+            for i in range(self.ARM_CONF_DIM):
+                joint_name = p.getJointInfo(self.robot, self.arm_joints[i])[1].decode('UTF-8')
+                velocity_limit = limits_params[joint_name]["max_velocity"]
+                self.joint_velocity_limits[i] = velocity_limit * self.TIME_STEP
 
         # Disable self collision with arms
         # Build dictionary 
@@ -81,12 +77,16 @@ class HuskyUtils:
                 p.setCollisionFilterPair(self.robot, self.robot, link_name_to_index[link1], link_name_to_index[link2], 0)
         
         # Create joint limits
-        self.joint_limits = []
+        self.joint_position_limits = []
         for j in arm_joints:
             joint_info = p.getJointInfo(self.robot, j)
             lower_limit = joint_info[8]
             upper_limit = joint_info[9]
-            self.joint_limits.append((lower_limit, upper_limit))
+            self.joint_position_limits.append((lower_limit, upper_limit))
+
+        # Disable wheels collision with floor
+        for i in self.wheel_links:
+            p.setCollisionFilterPair(robot, floor, i, -1, 0)
 
     def get_dynamics_fn(self):
         # Dynamics model for husky
@@ -191,11 +191,19 @@ class HuskyUtils:
     def get_connect_fn(self):
         def connect_fn(qi, qg, num_steps):
             step = (qg - qi) / num_steps
-            if False and torch.linalg.norm(step) > self.max_step_size:
+
+            # Check if any arm joints exceed velocity limit
+            if torch.any(torch.abs(step) > self.joint_velocity_limits):
+                # print(step)
+                # print(num_steps)
+                # print("step too big")
                 return None
+
+            # Otherwise connect start and goal linearly (assume holonomic)
             else:
                 arm_path = []
                 q = qi
+                print("Arm connect")
                 for i in range(num_steps):
                     q = q + step
                     arm_path.append(q)
@@ -203,8 +211,8 @@ class HuskyUtils:
         return connect_fn
 
     def get_collision_fn(self):
-        # TODO write actual collision 
         def collision_fn(x, q):
+            # Set base pose and arm config
             self.set_pose(x)
             self.set_joint_configuration(q)
 
@@ -217,7 +225,7 @@ class HuskyUtils:
                     return True
             
             # Check joint limits
-            for value, limits in zip(q, self.joint_limits):
+            for value, limits in zip(q, self.joint_position_limits):
                 if value < limits[0] or value > limits[1]:
                     return True
 
@@ -239,7 +247,7 @@ class HuskyUtils:
                                                                       device=self.device) + self.MIN_LIMITS, (1, -1))
             q = torch.zeros(self.ARM_CONF_DIM, device=self.device)
             for i in range(self.ARM_CONF_DIM):
-                q[i] = random.uniform(self.joint_limits[i][0], self.joint_limits[i][1])
+                q[i] = random.uniform(self.joint_position_limits[i][0], self.joint_position_limits[i][1])
             return x, q
 
         return sample_fn
