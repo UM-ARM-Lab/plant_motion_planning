@@ -1,15 +1,17 @@
 from cmath import cos
+from difflib import restore
 from re import X
 import torch
 import random
 import pybullet as p
 
 class Node:
-    def __init__(self, parent, x, u, q):
+    def __init__(self, parent, x, u, q, state_id):
         self.parent = parent # Parent node (None for root)
         self.x = x # State configuration
         self.u = u # Control input used to get to state (None for root)
         self.q = q # Arm joint configuration
+        self.state_id = state_id
     
     def extract_path(self):
         reverse_path = []
@@ -20,13 +22,16 @@ class Node:
         path = reverse_path[::-1]
         return path
         
-def rrt_solve(start, goal, dynamics_fn, steering_fn, connect_fn, collision_fn, base_cost_fn, arms_cost_fn, sample_fn, prims, execute_fn, goal_sampling=0.1, max_iterations=5000, epsilon=1e-1, smoothing_iterations=20):
+def rrt_solve(start, goal, dynamics_fn, steering_fn, connect_fn, collision_fn, save_state_fn, restore_state_fn,
+                 base_cost_fn, arms_cost_fn, sample_fn, prims, execute_fn, goal_sampling=0.1, max_iterations=5000, 
+                 epsilon=1e-1, smoothing_iterations=20):
     xi = start[0]
     xg = goal[0]
     qi = start[1]
     qg = goal[1]
+    state_id = save_state_fn()
     
-    root = Node(None, xi, None, qi)
+    root = Node(None, xi, None, qi, state_id)
     nodes = [root]
     print("rrt start")
     path = None
@@ -58,6 +63,7 @@ def rrt_solve(start, goal, dynamics_fn, steering_fn, connect_fn, collision_fn, b
         if is_target_goal:
             x = nearest_node.x
             q = nearest_node.q
+            restore_state_fn(nearest_node.state_id)
             goal_attempts.add(x)
             print(x)
             z = steering_fn(x, targetx)
@@ -71,10 +77,12 @@ def rrt_solve(start, goal, dynamics_fn, steering_fn, connect_fn, collision_fn, b
             # Check path for collisions
             for u, q in zip(z, arms_path):
                 x = dynamics_fn(x, u)
-                end_path.append(Node(None, x, u, q))
+                
                 if collision_fn(x, q):
                     is_collision = True
                     break
+                state_id = save_state_fn()
+                end_path.append(Node(None, x, u, q, state_id))
             
             # If we got to the goal, success
             if not is_collision and base_cost_fn(x, targetx) < epsilon and arms_cost_fn(q, targetq) < epsilon:
@@ -86,6 +94,8 @@ def rrt_solve(start, goal, dynamics_fn, steering_fn, connect_fn, collision_fn, b
         else:
             cost_to_target = torch.inf
             while True:
+                restore_state_fn(nearest_node.state_id)
+
                 # Try prims to find most optimal one
                 min_cost_to_target = torch.inf
                 min_cost_state = None
@@ -110,10 +120,12 @@ def rrt_solve(start, goal, dynamics_fn, steering_fn, connect_fn, collision_fn, b
                     x = dynamics_fn(x, u)
                     if collision_fn(x, q):
                         break
-                    n = Node(parent, x, u, q)
+                    state_id = save_state_fn()
+                    n = Node(parent, x, u, q, state_id)
                     nodes.append(n)
                     parent = n
 
+                # Keep going as long as cost to target keeps decreasing
                 if min_cost_to_target < cost_to_target:
                     nearest_node = parent
                     cost_to_target = min_cost_to_target

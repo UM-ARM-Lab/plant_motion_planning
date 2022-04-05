@@ -12,6 +12,9 @@ class Plant:
             self.link_reps.append(TwoAngleRepresentation(self.base_id, link_idx, self.base_points[link_idx],
                                                               parent_lid=self.link_parent_indices[link_idx]))
     
+        self.prev_plant_rot_joint_displacement_y = (len(self.joint_list) // 2) * [0]
+        self.prev_plant_rot_joint_displacement_x = (len(self.joint_list) // 2) * [0]
+
     def create_stem_element(self, stem_half_length, stem_half_width, current_index, scaling_factor, stem_half_height, stem_base_spacing):
         stem_half_height[current_index] = np.random.uniform(low=scaling_factor * 0.7, high=scaling_factor * 1.0)
 
@@ -313,7 +316,6 @@ class Plant:
             if(b.deflection < 0):
                 b.deflection = 0
 
-            print(b.deflection)
             if b.deflection > self.deflection_limit:
                 return True
 
@@ -323,6 +325,25 @@ class Plant:
                 last_angle = b.deflection
 
         return False
+    
+    def apply_restoring_force(self):
+        kp = 500
+        kd = 50
+
+        for i, joint_idx in enumerate(range(len(self.joint_list) - 1, 0, -2)):
+            plant_rot_joint_displacement_y, _, plant_hinge_x_reac, _ = p.getJointState(self.base_id, joint_idx)
+            plant_rot_joint_displacement_x, _, plant_hinge_y_reac, _ = p.getJointState(self.base_id, joint_idx - 1)
+
+            diffy = plant_rot_joint_displacement_y - self.prev_plant_rot_joint_displacement_y[i]
+            diffx = plant_rot_joint_displacement_x - self.prev_plant_rot_joint_displacement_x[i]
+
+            self.prev_plant_rot_joint_displacement_y[i], self.prev_plant_rot_joint_displacement_x[i] = plant_rot_joint_displacement_y, \
+                                                                                             plant_rot_joint_displacement_x
+
+            p.applyExternalTorque(self.base_id, linkIndex=joint_idx,
+                                  torqueObj=[-kp * plant_rot_joint_displacement_x + kd * diffx,
+                                             -kp * plant_rot_joint_displacement_y + kd * diffy, 0],
+                                  flags=p.LINK_FRAME)
 
 class TwoAngleRepresentation():
 

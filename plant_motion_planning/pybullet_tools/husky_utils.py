@@ -12,8 +12,9 @@ from plant_motion_planning.pybullet_tools.utils import step_simulation, wait_for
 
 
 class HuskyUtils:
-    def __init__(self, robot, floor, z_coord, device, arm_joints, srdf_file, goal_error=2e-1):
-        self.robot = robot
+    def __init__(self, env, floor, z_coord, device, arm_joints, srdf_file, goal_error=2e-1):
+        self.env = env
+        self.robot = env.robot
         self.z_coord = z_coord
         self.goal_error = goal_error
         self.device = device
@@ -40,17 +41,12 @@ class HuskyUtils:
             torch.tensor([linear_params['max_acceleration'], angular_params['max_acceleration']], device=self.device))
         self.TIME_STEP = 1. / 240. * 50
 
-        MIN_X = -5
-        MIN_Y = -5
         MIN_YAW = 0
-
-        MAX_X = 5
-        MAX_Y = 5
         MAX_YAW = 2 * np.pi
 
-        self.MIN_LIMITS = torch.tensor([MIN_X, MIN_Y, MIN_YAW, -self.MAX_VELOCITY[0], -self.MAX_VELOCITY[1]],
+        self.MIN_LIMITS = torch.tensor([MIN_YAW, -self.MAX_VELOCITY[0], -self.MAX_VELOCITY[1]],
                                        device=self.device).T
-        self.MAX_LIMITS = torch.tensor([MAX_X, MAX_Y, MAX_YAW, self.MAX_VELOCITY[0], self.MAX_VELOCITY[1]],
+        self.MAX_LIMITS = torch.tensor([MAX_YAW, self.MAX_VELOCITY[0], self.MAX_VELOCITY[1]],
                                        device=self.device).T
 
         # Get arm params
@@ -86,7 +82,7 @@ class HuskyUtils:
 
         # Disable wheels collision with floor
         for i in self.wheel_links:
-            p.setCollisionFilterPair(robot, floor, i, -1, 0)
+            p.setCollisionFilterPair(self.robot, floor, i, -1, 0)
 
     def get_dynamics_fn(self):
         # Dynamics model for husky
@@ -123,6 +119,7 @@ class HuskyUtils:
             q = n.q
             self.set_pose(x)
             self.set_joint_configuration(q)
+            self.env.step_env()
             if draw_path and not count % 5:
                 self.draw_path_line(prev_x, x, color=color)
                 prev_x = x
@@ -194,22 +191,19 @@ class HuskyUtils:
 
             # Check if any arm joints exceed velocity limit
             if torch.any(torch.abs(step) > self.joint_velocity_limits):
-                # print(step)
-                # print(num_steps)
-                # print("step too big")
                 return None
 
             # Otherwise connect start and goal linearly (assume holonomic)
             else:
                 arm_path = []
                 q = qi
-                print("Arm connect")
                 for i in range(num_steps):
                     q = q + step
                     arm_path.append(q)
                 return arm_path
         return connect_fn
 
+    # Check collision and step environment
     def get_collision_fn(self):
         def collision_fn(x, q):
             # Set base pose and arm config
@@ -231,20 +225,23 @@ class HuskyUtils:
 
             # Check self collision
             for i in range(len(self.arm_joints)):
-                for j in range(i+1, len(self.arm_joints)):
-                    points = p.getContactPoints(bodyA=self.robot, linkIndexA=self.arm_joints[i], bodyB=self.robot, linkIndexB=self.arm_joints[j])
+                for j in range(p.getNumJoints(self.robot)):
+                    points = p.getContactPoints(bodyA=self.robot, linkIndexA=self.arm_joints[i], bodyB=self.robot, linkIndexB=j)
                     if points:
-                        print(points)
                         return True
-            
-            return False
+
+            # Check plant deflections and step environment
+            self.env.step_env()
+            return self.env.check_deflection()
 
         return collision_fn
 
     def get_sample_fn(self):
         def sample_fn():
-            x = torch.reshape((self.MAX_LIMITS - self.MIN_LIMITS) * torch.rand(self.STATE_DIM,
-                                                                      device=self.device) + self.MIN_LIMITS, (1, -1))
+            base_position = self.env.sample_base_position()
+            yaw_vels = (self.MAX_LIMITS - self.MIN_LIMITS) * torch.rand(self.STATE_DIM - 2, device=self.device) + self.MIN_LIMITS
+            x = torch.reshape(torch.cat((base_position, yaw_vels)), (1, -1))
+
             q = torch.zeros(self.ARM_CONF_DIM, device=self.device)
             for i in range(self.ARM_CONF_DIM):
                 q[i] = random.uniform(self.joint_position_limits[i][0], self.joint_position_limits[i][1])
