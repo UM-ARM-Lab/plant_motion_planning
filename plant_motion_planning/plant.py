@@ -3,7 +3,7 @@ import numpy as np
 import pybullet as p
 
 class Plant:
-    def __init__(self, num_branches_per_stem, total_num_vert_stems, total_num_extensions, base_pos_xy, deflection_limit=np.pi/4):
+    def __init__(self, num_branches_per_stem, total_num_vert_stems, total_num_extensions, base_pos_xy, deflection_limit=np.pi/12):
         self.base_id, self.joint_list = self.create_random_plant(num_branches_per_stem, total_num_vert_stems, total_num_extensions, base_pos_xy)
         self.link_reps = []
         self.deflection_limit = deflection_limit

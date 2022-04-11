@@ -36,6 +36,9 @@ class Environment:
 
         # Load robot
         self.robot = p.loadURDF(HDT_MICHIGAN_URDF, basePosition=(-0.5 + self.x_offset, -0.5 + self.y_offset, z_coord), useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION)
+        for j in range(p.getNumJoints(self.robot)):
+            p.changeDynamics(self.robot, j, mass=9999999999)
+
 
         # Setup garden walls
         wall1 = p.loadURDF(SHORT_WALL_URDF, useFixedBase=True, basePosition=(0 + self.x_offset, GARDEN_HEIGHT / 2 + self.y_offset, 0))
@@ -79,7 +82,7 @@ class Environment:
     def check_deflection(self):
         for plant in self.plants:
             if plant.check_deflection():
+                print("Deflection limit exceeded")
                 return True
-        
         return False
         

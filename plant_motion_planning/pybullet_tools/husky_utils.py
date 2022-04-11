@@ -12,7 +12,7 @@ from plant_motion_planning.pybullet_tools.utils import step_simulation, wait_for
 
 
 class HuskyUtils:
-    def __init__(self, env, floor, z_coord, device, arm_joints, srdf_file, goal_error=2e-1):
+    def __init__(self, env, floor, z_coord, time_step, device, arm_joints, srdf_file, goal_error=2e-1):
         self.env = env
         self.robot = env.robot
         self.z_coord = z_coord
@@ -39,7 +39,7 @@ class HuskyUtils:
                                          device=self.device)
         self.MAX_ACCLERATION = torch.diag(
             torch.tensor([linear_params['max_acceleration'], angular_params['max_acceleration']], device=self.device))
-        self.TIME_STEP = 1. / 240. * 50
+        self.time_step = time_step
 
         MIN_YAW = 0
         MAX_YAW = 2 * np.pi
@@ -57,7 +57,7 @@ class HuskyUtils:
             for i in range(self.ARM_CONF_DIM):
                 joint_name = p.getJointInfo(self.robot, self.arm_joints[i])[1].decode('UTF-8')
                 velocity_limit = limits_params[joint_name]["max_velocity"]
-                self.joint_velocity_limits[i] = velocity_limit * self.TIME_STEP
+                self.joint_velocity_limits[i] = velocity_limit * self.time_step
 
         # Disable self collision with arms
         # Build dictionary 
@@ -87,21 +87,20 @@ class HuskyUtils:
     def get_dynamics_fn(self):
         # Dynamics model for husky
         # x = [xpos, ypos, yaw, v, w]^T
-        # u = [u1, u2] where u1, u2 [-1, 1] representing -1 as max deaccleration and 1 as max acceleration
+        # u = [u1, u2] where u1, u2 in range [-1, 1] representing -1 as max deaccleration and 1 as max acceleration
         def dynamics_fn(x, u):
             # u has to be in range
 
             # if np.max(u) > 1 or np.min(u) < -1:
             #     return None
-
-            accel = torch.matmul(u, self.MAX_ACCLERATION) * self.TIME_STEP
+            accel = torch.matmul(u, self.MAX_ACCLERATION) * self.time_step
             new_vels = x[:, 3:5] + accel
             new_vels[:, 0] = torch.clamp(new_vels[:, 0], -self.MAX_VELOCITY[0], self.MAX_VELOCITY[1])
             new_vels[:, 1] = torch.clamp(new_vels[:, 1], -self.MAX_VELOCITY[1], self.MAX_VELOCITY[1])
 
-            delta_distances = new_vels[:, 0:1] * self.TIME_STEP
+            delta_distances = new_vels[:, 0:1] * self.time_step
             delta_poses = torch.cat((delta_distances * torch.cos(x[:, 2:3]), delta_distances * torch.sin(x[:, 2:3]),
-                                     new_vels[:, 1:2] * self.TIME_STEP), 1)
+                                     new_vels[:, 1:2] * self.time_step), 1)
             new_poses = x[:, 0:3] + delta_poses
 
             xnew = torch.cat((new_poses, new_vels), 1)
@@ -115,8 +114,7 @@ class HuskyUtils:
             prev_x = x
             count = 0
         for n in path:
-            x = n.x
-            q = n.q
+            x, q = n
             self.set_pose(x)
             self.set_joint_configuration(q)
             self.env.step_env()
@@ -124,9 +122,10 @@ class HuskyUtils:
                 self.draw_path_line(prev_x, x, color=color)
                 prev_x = x
             if draw_path:
-                wait_for_duration(self.TIME_STEP / 4)
+                wait_for_duration(self.time_step / 4)
             else:
-                wait_for_duration(self.TIME_STEP / 4)
+                wait_for_duration(self.time_step)
+            count = count + 1
 
     def gen_prims(self, num_prims, draw_prims=False):
         prims = []
@@ -157,7 +156,7 @@ class HuskyUtils:
         dynamics_fn = self.get_dynamics_fn()
         cost_fn = self.get_base_cost_fn(ignore_vel=ignore_vel)
 
-        def steering_fn(start, goal, max_iterations=100):
+        def steering_fn(start, goal, max_iterations=500):
             # give it a terminal cost to encourage actually arriving at the goal
             # running cost becomes a weaker signal closer to the goal so we need an additional cost
             def terminal_cost_fn(current_node, actions):
@@ -189,9 +188,10 @@ class HuskyUtils:
         def connect_fn(qi, qg, num_steps):
             step = (qg - qi) / num_steps
 
-            # Check if any arm joints exceed velocity limit
-            if torch.any(torch.abs(step) > self.joint_velocity_limits):
-                return None
+            # Wrap step size based on velocity constraints
+            for i in range(len(step)):
+                if abs(step[i]) > self.joint_velocity_limits[i]:
+                    step[i] = (step[i] / abs(step[i])) * self.joint_velocity_limits[i]
 
             # Otherwise connect start and goal linearly (assume holonomic)
             else:
@@ -221,6 +221,7 @@ class HuskyUtils:
             # Check joint limits
             for value, limits in zip(q, self.joint_position_limits):
                 if value < limits[0] or value > limits[1]:
+                    print("Joint limits exceeded")
                     return True
 
             # Check self collision
