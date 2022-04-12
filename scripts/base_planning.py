@@ -1,3 +1,8 @@
+import sys, os
+currentdir = os.path.dirname(os.path.realpath(__file__))
+parentdir = os.path.dirname(currentdir)
+sys.path.append(parentdir)
+
 from cmath import cos
 import random
 from plant_motion_planning.pybullet_tools.val_utils import get_arm_joints
@@ -64,14 +69,13 @@ steering_fn = husky_utils.get_steering_fn()
 connect_fn = husky_utils.get_connect_fn()
 
 print("start prims")
-prims = husky_utils.gen_prims(num_prims=12, draw_prims=True)
+prims = husky_utils.gen_prims(num_prims=12, draw_prims=False)
 print("finish prims")
 
 init_state = p.saveState()
 path,old_path = rrt_solve((start, qStart), (goal, qGoal), dynamics_fn, steering_fn, connect_fn, collision_fn, env.save_state, env.restore_state,
                              base_cost_fn, arms_cost_fn, sample_fn, prims, husky_utils.execute_path)
 p.restoreState(init_state)
-
 
 if path is not None:
     input("Path found! Enter to execute")

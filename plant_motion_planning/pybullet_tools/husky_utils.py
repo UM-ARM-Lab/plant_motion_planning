@@ -7,6 +7,7 @@ import re
 import random
 from arm_pytorch_utilities.math_utils import angular_diff_batch
 from pytorch_mppi import mppi
+from ompl import base
 
 from plant_motion_planning.pybullet_tools.utils import step_simulation, wait_for_duration
 
@@ -129,7 +130,9 @@ class HuskyUtils:
 
     def gen_prims(self, num_prims, draw_prims=False):
         prims = []
-        steering_fn = self.get_steering_fn(ignore_vel=True)
+        if draw_prims:
+            dynamics_fn = self.get_dynamics_fn()
+        steering_fn = self.get_steering_fn(epsilon=1e-1, ignore_vel=True)
 
         # Evenly spaced points arround the unit circle
         starts = torch.zeros((num_prims, self.STATE_DIM), device=self.device)
@@ -147,14 +150,21 @@ class HuskyUtils:
                     yaw -= torch.pi
 
         for start, goal in zip(starts, goals):
-            prim = steering_fn(start, goal)
+            prim = steering_fn(start, goal, max_iterations=20)
+            if draw_prims:
+                x = torch.reshape(start, (1, -1))
+                prev_x = x
+                for u in prim:
+                    x = dynamics_fn(x, u)
+                    self.draw_path_line(prev_x, x)
+                    prev_x = x
             prims.append(prim)
 
         return prims
 
     def get_steering_fn(self, epsilon=1e-1, ignore_vel=False, terminal_state_weight=5):
         dynamics_fn = self.get_dynamics_fn()
-        cost_fn = self.get_base_cost_fn(ignore_vel=ignore_vel)
+        cost_fn = self.get_rs_cost_fn()
 
         def steering_fn(start, goal, max_iterations=500):
             # give it a terminal cost to encourage actually arriving at the goal
@@ -163,7 +173,7 @@ class HuskyUtils:
                 return terminal_state_weight * cost_fn(current_node[:, -1], goal), actions
 
             running_cost_fn = self.get_base_running_cost_fn(goal, cost_fn)
-            ctrl = mppi.MPPI(dynamics=dynamics_fn, running_cost=running_cost_fn, terminal_state_cost=terminal_cost_fn,
+            ctrl = mppi.MPPI(dynamics=dynamics_fn, running_cost=running_cost_fn,
                              nx=self.STATE_DIM, noise_sigma=torch.eye(self.CONTROL_DIM, device=self.device),
                              num_samples=100, horizon=15, device=self.device,
                              u_min=-1 * torch.ones((1, 2), device=self.device),
@@ -250,7 +260,7 @@ class HuskyUtils:
 
         return sample_fn
 
-    def get_base_cost_fn(self, ignore_vel=False):
+    def get_base_cost_fn(self, ignore_vel=False, turning_radius=1.0):
         Q = torch.tensor([1, 1, 0.50, 0.25, 0.125], device=self.device)
         if ignore_vel:
             Q = Q[0:3]
@@ -264,6 +274,32 @@ class HuskyUtils:
             return cost
 
         return base_cost_fn
+    
+    def get_rs_cost_fn(self, turning_radius=1.0):
+        rs_state = base.ReedsSheppStateSpace(turning_radius)
+
+        def rs_cost_fn(x0, x1):
+            if x0.size(0) > x1.size(0):
+                x1 = x1.repeat(x0.size()[0], 1)
+
+            rs_costs = torch.zeros(x0.size(0), device=self.device)
+            for i in range(x0.size(0)):
+                se2_0 = base.SE2StateSpace()
+                s_0 = base.State(se2_0)
+
+                s_0().setXY(x0[i, 0].item(), x0[i, 1].item())
+                s_0().setYaw(x0[i, 2].item())
+
+                se2_1 = base.SE2StateSpace()
+                s_1 = base.State(se2_1)
+                s_1().setXY(x1[i, 0].item(), x1[i, 1].item())
+                s_1().setYaw(x1[i, 2].item())
+
+                rs_costs[i] = rs_state.distance(s_0(), s_1())
+            
+            return rs_costs
+        
+        return rs_cost_fn
 
     # For use with MPPI controller
     def get_base_running_cost_fn(self, goal, cost_fn):
