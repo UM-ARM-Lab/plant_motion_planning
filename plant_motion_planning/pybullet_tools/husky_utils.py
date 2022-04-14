@@ -115,7 +115,7 @@ class HuskyUtils:
             prev_x = x
             count = 0
         for n in path:
-            x, q = n
+            x, q, _ = n
             self.set_pose(x)
             self.set_joint_configuration(q)
             self.env.step_env()

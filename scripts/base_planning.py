@@ -81,6 +81,7 @@ if path is not None:
     input("Path found! Enter to execute")
     print("Number of path nodes: ", len(path))
     #log = p.startStateLogging(loggingType=p.STATE_LOGGING_VIDEO_MP4, fileName='vid.mp4')
+    husky_utils.execute_path(start, old_path, draw_path=True, color=(1, 0, 0))
     husky_utils.execute_path(start, path, draw_path=True, color=(0, 0, 1))
     #p.stopStateLogging(log)
 else:

@@ -9,7 +9,7 @@ class Node:
     def __init__(self, parent, x, u, q, state_id):
         self.parent = parent # Parent node (None for root)
         self.xs = x[::-1] # State configuration
-        self.us = u # Control input used to get to state (None for root)
+        self.us = u[::-1] if u is not None else None # Control input used to get to state (None for root)
         self.qs = q[::-1] # Arm joint configuration
         self.state_id = state_id
     
@@ -17,15 +17,15 @@ class Node:
         reverse_path = []
         n = self
         while(n.parent is not None):
-            for x, q in zip(n.xs, n.qs):
-                reverse_path.append((x, q))
+            for x, q, u in zip(n.xs, n.qs, n.us):
+                reverse_path.append((x, q, u))
             n = n.parent
         path = reverse_path[::-1]
         return path
         
 def rrt_solve(start, goal, dynamics_fn, steering_fn, connect_fn, collision_fn, save_state_fn, restore_state_fn,
                  base_cost_fn, arms_cost_fn, sample_fn, prims, execute_fn, goal_sampling=0.1, max_iterations=5000, 
-                 epsilon=1e-1, smoothing_iterations=20):
+                 epsilon=1e-1, smoothing_iterations=50):
     xi = start[0]
     xg = goal[0]
     qi = start[1]
@@ -82,7 +82,7 @@ def rrt_solve(start, goal, dynamics_fn, steering_fn, connect_fn, collision_fn, s
                     is_collision = True
                     break
                 state_id = save_state_fn()
-                end_path.append((x,q))
+                end_path.append((x, q, u))
             
             # If we got to the goal, success
             if not is_collision and base_cost_fn(x, targetx) < epsilon and arms_cost_fn(q, targetq) < epsilon:
@@ -145,73 +145,59 @@ def rrt_solve(start, goal, dynamics_fn, steering_fn, connect_fn, collision_fn, s
 
     old_path = path.copy()
 
-    # for i in range(smoothing_iterations):
-    #     print("Smoothing iteration", i)
-    #     # Sample two random states on path
-    #     i0 = random.randint(0, len(path) - 2)
-    #     i1 = random.randint(i0+1, len(path) - 1)
+    for i in range(smoothing_iterations):
+        print("Smoothing iteration", i)
+        # Sample two random states on path
+        i0 = random.randint(0, len(path) - 2)
+        i1 = random.randint(i0+1, len(path) - 1)
 
-    #     if i0 != i1:
-    #         n0 = path[i0]
-    #         n1 = path[i1]
+        print(i1-i0)
 
-    #         p.addUserDebugLine((n0.x[0, 0], n0.x[0, 1], 0.1), (n1.x[0, 0], n1.x[0, 1], 0.1), lifeTime=5, lineColorRGB=(0, 0, 1))
+        if i0 != i1:
+            x0, q0, _ = path[i0]
+            x1, q1, _ = path[i1]
 
-    #         # Connect states
-    #         z = steering_fn(n0.x, n1.x)
+            # Connect states
+            z = steering_fn(x0, x1, max_iterations=i1-i0)
 
-    #         # Only proceed if steering function did better than original path
-    #         # if len(z) == (i1 - i0):
-    #         #     continue
+            # Only proceed if steering function did better than original path
+            # if len(z) == (i1 - i0):
+            #     continue
 
-    #         x = n0.x
-    #         smoothed_path = []
-    #         is_collision = False
-    #         print(i1 - i0, len(z))
-    #         # Check collision
-    #         for u in z:
-    #             x = dynamics_fn(x, u)
-    #             if collision_fn(x):
-    #                 is_collision = True
-    #                 break
-    #             n = Node(None, x, u)
-    #             smoothed_path.append(n)
-    #         if is_collision:
-    #             continue
-    #         execute_fn(smoothed_path[0], smoothed_path)
+            smoothed_path = []
+            qs = connect_fn(q0, q1, len(z))
+            x = x0
+            is_collision = False
+            print(i1 - i0, len(z))
+            # Check collision
+            for u, q in zip(z, qs):
+                x = dynamics_fn(x, u)
+                if collision_fn(x, q):
+                    is_collision = True
+                    break
+                smoothed_path.append((x, q, u))
+            if is_collision:
+                continue
+                
+            # Connect rest of path
+            q = qs[-1]
+            for i in range(i1+1, len(path)):
+                _, q, u = path[i]
+                x = dynamics_fn(x, u)
+                if collision_fn(x, q):
+                    is_collision = True
+                    break
+                smoothed_path.append((x, q, u))
+                q = qs[-1]
+            if is_collision:
+                continue
 
-    #         # Check rest of path
-    #         for i in range(i1+1, len(path)):
-    #             z = steering_fn(x, path[i].x, max_iterations=5)
-    #             for u in z:
-    #                 x = dynamics_fn(x, u)
-    #                 if collision_fn(x):
-    #                     is_collision = True
-    #                     break
-    #                 n = Node(None, x, u)
-    #                 smoothed_path.append(n)
-
-    #         if is_collision:
-    #             continue
-
-    #         # If we end up outside our goal radius, try connecting to the goal again
-    #         if base_cost_fn(x, xg) > epsilon:
-    #             z = steering_fn(x, xg, 10)
-    #             for u in z:
-    #                 x = dynamics_fn(x, u)
-    #             if collision_fn(x):
-    #                 is_collision = True
-    #                 break
-    #             n = Node(None, x, u)
-    #             smoothed_path.append(n)
-
-    #         if is_collision:
-    #             continue
-
-    #         # Check if we're still within our goal tolerance
-    #         if base_cost_fn(x, xg) < epsilon:
-    #             print("Smoothing success")
-    #             path[i0+1:i1+1] = smoothed_path
+            # Check if we're still within our goal tolerance
+            if base_cost_fn(x, xg) + arms_cost_fn(q, qg) < epsilon:
+                print("Smoothing success")
+                path[i0+1:-1] = smoothed_path
+            else:
+                print("End cost too high")
 
     print("Ran for ", i, " iterations")
     return path, old_path
