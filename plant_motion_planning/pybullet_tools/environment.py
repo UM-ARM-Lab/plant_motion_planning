@@ -69,7 +69,8 @@ class Environment:
         return not ((sample[0] > 0) and (sample[0] < GARDEN_LENGTH) and (sample[1] > 0) and (sample[1] < GARDEN_HEIGHT))
 
     def save_state(self):
-        return p.saveState()
+        id = p.saveState()
+        return id
     def restore_state(self, state_id):
         p.restoreState(stateId=state_id)
 

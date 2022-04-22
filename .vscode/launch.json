@@ -8,9 +8,9 @@
             "name": "Base planning",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/scripts/base_planning.py",
+            "program": "${workspaceFolder}/scripts/bispace_planning.py",
             "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
+            "console":"integratedTerminal",
             "justMyCode": true
         }
     ]

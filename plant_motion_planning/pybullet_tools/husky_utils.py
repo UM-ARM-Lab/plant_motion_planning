@@ -5,15 +5,15 @@ import torch
 import yaml
 import re
 import random
-from arm_pytorch_utilities.math_utils import angular_diff_batch
+from arm_pytorch_utilities.math_utils import angular_diff_batch, angular_diff
 from pytorch_mppi import mppi
 from ompl import base
 
-from plant_motion_planning.pybullet_tools.utils import step_simulation, wait_for_duration
+from plant_motion_planning.pybullet_tools.utils import set_pose, step_simulation, wait_for_duration
 
 
 class HuskyUtils:
-    def __init__(self, env, floor, z_coord, time_step, device, arm_joints, srdf_file, goal_error=2e-1):
+    def __init__(self, env, floor, z_coord, time_step, device, arm_joints, ee_link_idx, srdf_file, goal_error=2e-1):
         self.env = env
         self.robot = env.robot
         self.z_coord = z_coord
@@ -23,10 +23,12 @@ class HuskyUtils:
         self.STATE_DIM = 5
         self.CONTROL_DIM = 2
         self.ARM_CONF_DIM = len(arm_joints)
+        self.GOAL_DIM = 6
 
         self.base_collision_links = [3, 4, 5, 6, 7, 9, 10, 14, 15, 19]
         self.wheel_links = [3, 4, 5, 6]
         self.arm_joints = arm_joints
+        self.ee_link_index = ee_link_idx
 
         # Get base params
         r = rospkg.RosPack()
@@ -49,16 +51,18 @@ class HuskyUtils:
                                        device=self.device).T
         self.MAX_LIMITS = torch.tensor([MAX_YAW, self.MAX_VELOCITY[0], self.MAX_VELOCITY[1]],
                                        device=self.device).T
+        
+        self.MIN_U = torch.tensor([])
 
         # Get arm params
-        self.joint_velocity_limits = torch.zeros(self.ARM_CONF_DIM, device=self.device)
+        self.joint_step_limits = torch.zeros(self.ARM_CONF_DIM, device=self.device)
         with open(r.get_path('hdt_michigan_moveit') + '/config/joint_limits.yaml') as stream:
             parsed_yaml = yaml.safe_load(stream)
             limits_params = parsed_yaml["joint_limits"]
             for i in range(self.ARM_CONF_DIM):
                 joint_name = p.getJointInfo(self.robot, self.arm_joints[i])[1].decode('UTF-8')
                 velocity_limit = limits_params[joint_name]["max_velocity"]
-                self.joint_velocity_limits[i] = velocity_limit * self.time_step
+                self.joint_step_limits[i] = velocity_limit * self.time_step
 
         # Disable self collision with arms
         # Build dictionary 
@@ -84,6 +88,9 @@ class HuskyUtils:
         # Disable wheels collision with floor
         for i in self.wheel_links:
             p.setCollisionFilterPair(self.robot, floor, i, -1, 0)
+        
+        # Set goal step limits
+        self.goal_step_limits = torch.tensor([0.25, 0.25, 0.25, torch.pi/12, torch.pi/12, torch.pi/12])
 
     def get_dynamics_fn(self):
         # Dynamics model for husky
@@ -115,7 +122,7 @@ class HuskyUtils:
             prev_x = x
             count = 0
         for n in path:
-            x, q, _ = n
+            x, q = n
             self.set_pose(x)
             self.set_joint_configuration(q)
             self.env.step_env()
@@ -175,7 +182,7 @@ class HuskyUtils:
             running_cost_fn = self.get_base_running_cost_fn(goal, cost_fn)
             ctrl = mppi.MPPI(dynamics=dynamics_fn, running_cost=running_cost_fn,
                              nx=self.STATE_DIM, noise_sigma=torch.eye(self.CONTROL_DIM, device=self.device),
-                             num_samples=100, horizon=15, device=self.device,
+                             num_samples=100, horizon=15, device=self.device, terminal_state_cost=terminal_cost_fn,
                              u_min=-1 * torch.ones((1, 2), device=self.device),
                              u_max=torch.ones((1, 2), device=self.device))
 
@@ -200,8 +207,8 @@ class HuskyUtils:
 
             # Wrap step size based on velocity constraints
             for i in range(len(step)):
-                if abs(step[i]) > self.joint_velocity_limits[i]:
-                    step[i] = (step[i] / abs(step[i])) * self.joint_velocity_limits[i]
+                if abs(step[i]) > self.joint_step_limits[i]:
+                    step[i] = (step[i] / abs(step[i])) * self.joint_step_limits[i]
 
             # Otherwise connect start and goal linearly (assume holonomic)
             else:
@@ -241,9 +248,10 @@ class HuskyUtils:
                     if points:
                         return True
 
-            # Check plant deflections and step environment
-            self.env.step_env()
-            return self.env.check_deflection()
+            # # Check plant deflections and step environment
+            # self.env.step_env()
+            # return self.env.check_deflection()
+            return False
 
         return collision_fn
 
@@ -259,6 +267,55 @@ class HuskyUtils:
             return x, q
 
         return sample_fn
+    
+    def get_sample_conf_step_fn(self):
+        def sample_conf_step_fn(q):
+            # Sample u in range[-1, 1]
+            u = torch.rand(self.CONTROL_DIM, device=self.device) * 2  - 1
+            u = torch.reshape(u, (1, -1))
+
+            # Sample qstep within step limits
+            qstep = 2 * self.joint_step_limits * torch.rand(self.ARM_CONF_DIM, device=self.device) - self.joint_step_limits
+            qnext = q + qstep
+
+            # Wrap qstep if current config provided
+            for i in range(len(qnext)):
+                if qnext[i] < self.joint_position_limits[i][0]:
+                    qnext[i] = self.joint_position_limits[i][0]
+                elif qnext[i] > self.joint_position_limits[i][1]:
+                    qnext[i] = self.joint_position_limits[i][1]
+            return u, qnext
+        
+        return sample_conf_step_fn
+    
+    def get_sample_goal_step_fn(self):
+        def sample_goal_step_fn():
+            bstep = 2 * self.goal_step_limits * torch.rand(self.GOAL_DIM, device=self.device) - self.goal_step_limits
+            return bstep
+        
+        return sample_goal_step_fn
+    
+    def get_ee_pose_fn(self):
+        def ee_pose_fn(x, q):
+            self.set_pose(x)
+            self.set_joint_configuration(q)
+
+            state = p.getLinkState(self.robot, self.ee_link_index)
+            position = torch.tensor(state[0], device=self.device)
+            orientation = torch.tensor(p.getEulerFromQuaternion(state[1]), device=self.device)
+            return torch.cat((position, orientation))
+
+        return ee_pose_fn
+    
+    def get_goal_cost_fn(self):
+        Q = torch.tensor([1., 1., 1., 0.25, 0.25, 0.25], device=self.device)
+        def goal_cost_fn(b0, b1):
+            diff = b0-b1
+            for i in range(3, 6):
+                diff[i] = angular_diff(b0[i], b1[i])
+            return diff ** 2 @ Q
+
+        return goal_cost_fn
 
     def get_base_cost_fn(self, ignore_vel=False, turning_radius=1.0):
         Q = torch.tensor([1, 1, 0.50, 0.25, 0.125], device=self.device)
@@ -277,7 +334,7 @@ class HuskyUtils:
     
     def get_rs_cost_fn(self, turning_radius=1.0):
         rs_state = base.ReedsSheppStateSpace(turning_radius)
-
+        Q = torch.tensor([0.2, 0.1], device=self.device)
         def rs_cost_fn(x0, x1):
             if x0.size(0) > x1.size(0):
                 x1 = x1.repeat(x0.size()[0], 1)
@@ -295,7 +352,10 @@ class HuskyUtils:
                 s_1().setXY(x1[i, 0].item(), x1[i, 1].item())
                 s_1().setYaw(x1[i, 2].item())
 
-                rs_costs[i] = rs_state.distance(s_0(), s_1())
+                vel_cost = (x0[i, 3:5] - x1[i, 3:5]) ** 2 @ Q
+                rs_cost = rs_state.distance(s_0(), s_1())
+                #print(vel_cost, rs_cost)
+                rs_costs[i] = rs_cost + vel_cost
             
             return rs_costs
         

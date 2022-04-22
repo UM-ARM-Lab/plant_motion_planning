@@ -1,9 +1,5 @@
-from cmath import cos
-from difflib import restore
-from re import X
 import torch
 import random
-import pybullet as p
 
 class Node:
     def __init__(self, parent, x, u, q, state_id):
@@ -25,7 +21,7 @@ class Node:
         
 def rrt_solve(start, goal, dynamics_fn, steering_fn, connect_fn, collision_fn, save_state_fn, restore_state_fn,
                  base_cost_fn, arms_cost_fn, sample_fn, prims, execute_fn, goal_sampling=0.1, max_iterations=5000, 
-                 epsilon=1e-1, smoothing_iterations=50):
+                 epsilon=1e-1, smoothing_iterations=15):
     xi = start[0]
     xg = goal[0]
     qi = start[1]
